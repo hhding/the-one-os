@@ -2,6 +2,16 @@ org 0x7c00
 jmp entry
 
 entry:
+    mov ax, cs
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov sp, 0x8000  ; 0x7c00 -> 0x8000: Total 1024 Byte, 512B for MBR and 512B for stack
+
+    mov si, msg_hello
+    call putloop
+
 	mov ax, 0x0820
 	mov es, ax
 	mov bx, 0	; buffer address es:bx
@@ -9,6 +19,10 @@ entry:
 	mov ch, 0	; clyinder && 0xff
 	mov dh, 0	; head
 	mov cl, 2	; sector
+    call read_disk_loop
+	mov si, boot_msg
+    call putloop
+	jmp 0x8200
 
 read_disk_loop:
 	mov ah, 0x02	; read disk
@@ -23,32 +37,34 @@ next:
 	add cl, 1	; next sector
 	cmp cl, 8	; max 8 sector
 	jbe read_disk_loop
-
-	mov si, boot_msg
+    ret
 
 putloop:
     	mov al, [si]
     	add si, 1
     	cmp al, 0
-    	je boot
+    	je put_ret
 
     	mov ah, 0x0e
     	mov bx, 15
     	int 0x10
     	jmp putloop
+put_ret:
+        ret
 
-boot:
-	jmp 0x8200
+error:
+	mov si, err_msg
+	call putloop
+    jmp fin
 
 fin:
    	hlt
 
-error:
-	mov si, err_msg
-	jmp putloop
+msg_hello:
+  	db 0xd, 0xa, "Hello, this is a boot loader by dhh", 0
 
 boot_msg:
-  	db 0xa, "booting into second sector..", 0xa, 0
+  	db 0xd, 0xa, "MBR: Booting into second sector..", 0
 
 err_msg:
   	db 0xa, "error read disk", 0xa, 0

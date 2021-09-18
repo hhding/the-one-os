@@ -19,5 +19,5 @@ fin:
    	hlt
 
 hello_msg:
-  	db 0xa, "hello, I am kernel loaded from second sector", 0xa, 0
+  	db 0xd, 0xa, 0xd, 0xa, "hello, I am kernel loaded from second sector", 0
 
