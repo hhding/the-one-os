@@ -50,8 +50,10 @@ p_mode_start:
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov esp, 0x8200
+    mov ax, SELECTOR_VIDEO
+    mov gs, ax
+    mov byte [gs:0], 'P'
 
-    hlt
+    jmp $
 
 
