@@ -1,11 +1,8 @@
-org 0x8200
+%include "boot.inc"
 
-global _start
-
-_start:
+section loader vstart=LOADER_BASE_ADDR
     jmp loader_start
 
-gdt_addr:
     GDT_BASE:           dd  0x00000000
                         dd  0x00000000
     CODE_DESC:          dd  0x0000FFFF
@@ -22,7 +19,7 @@ gdt_addr:
     SELECTOR_VIDEO  equ  (0x0003 << 3) + TI_GDT + RPL0
 
     gdt_ptr:    dw  GDT_LIMIT
-                dd  gdt_addr
+                dd  GDT_BASE
 
     
     loader_start:
@@ -57,6 +54,4 @@ p_mode_start:
 
     hlt
 
-hello_msg:
-  	db 0xd, 0xa, 0xd, 0xa, "hello, I am kernel loaded from second sector", 0
 
