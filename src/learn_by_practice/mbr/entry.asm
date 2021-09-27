@@ -46,6 +46,7 @@ section loader vstart=LOADER_BASE_ADDR
 
 [bits 32]
 ;----------------- 创建页目录以及页表
+; vaddr = 10bit PDE index + 10bit PTE index + 12bit offset(4096)
 setup_page:
     mov ecx, 4096
     mov esi, 0
@@ -104,12 +105,21 @@ p_mode_start:
     mov ds, ax
     mov es, ax
     mov ss, ax
+    call setup_page
+    sgdt [gdt_ptr]
+    mov ebx, [gdt_ptr + 2]
+    or dword [gdt_ptr + 2], 0xc0000000
+    add esp, 0xc0000000
+    mov eax, PAGE_DIR_TABLE_POS
+    mov cr3, eax
+    mov eax, cr0
+    or eax, 0x80000000
+    mov cr0, eax
+    lgdt [gdt_ptr]
+
     mov ax, SELECTOR_VIDEO
     mov gs, ax
     mov byte [gs:0], 'P'
 
-    call setup_page
-
     jmp $
-
 
