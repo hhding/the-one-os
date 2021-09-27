@@ -78,7 +78,7 @@ setup_page:
     inc esi
     loop .create_pte
 
-; 创建内额其他页表的 PDE，内核其他页表的 PDE 都需要初始化
+; 创建内核其他页表的 PDE，内核其他页表的 PDE 都需要初始化
     mov eax, PAGE_DIR_TABLE_POS
     add eax, 0x2000             ; 第二个页表
     or eax, PG_US_U | PG_RW_W | PG_P    ; 属性位7，US=1, RW=1, P=1
