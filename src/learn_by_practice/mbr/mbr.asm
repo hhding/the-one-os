@@ -40,15 +40,15 @@ next:
     ret
 
 putloop:
-    	mov al, [si]
-    	add si, 1
-    	cmp al, 0
-    	je put_ret
+    mov al, [si]
+    add si, 1
+    cmp al, 0
+    je put_ret
 
-    	mov ah, 0x0e
-    	mov bx, 15
-    	int 0x10
-    	jmp putloop
+    mov ah, 0x0e
+    mov bx, 15
+    int 0x10
+    jmp putloop
 put_ret:
         ret
 
