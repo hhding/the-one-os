@@ -117,9 +117,97 @@ p_mode_start:
     mov cr0, eax
     lgdt [gdt_ptr]
 
+    mov eax, KERNEL_START_SECTOR
+    mov ebx, KERNEL_BIN_BASE_ADDR
+    mov ecx, 200
+    call rd_disk_m_32
+
     mov ax, SELECTOR_VIDEO
     mov gs, ax
     mov byte [gs:0], 'P'
 
     jmp $
+
+
+; ------------ 解析和重新加载在内存中的 ELF 文件 ----------------
+kernel_init:
+    xor eax, eax
+    xor ebx, ebx    ; ebx 记录程序头表地址
+    xor ecx, ecx    ; cx 记录程序头表中 Program header 数量
+    xor edx, edx    ; dx 记录 Program header 大小，即 e_phentsize
+    mov dx, [KERNEL_BIN_BASE_ADDR + 0x2a]
+    mov ebx, [KERNEL_BIN_BASE_ADDR + 0x1c]  ; 程序头的偏移
+    add ebx, KERNEL_BIN_BASE_ADDR           ; 这个才是程序头表地址
+    mov cx, [KERNEL_BIN_BASE_ADDR + 0x2c]
+    
+.each_segment:
+    ;cmp byte [ebx]
+; --------------------------------------------------------
+; 功能：读取硬盘 n 个扇区
+rd_disk_m_32:
+; eax = lba 扇区号
+; ebx = 将数据写入的内存地址
+; ecx = 读入的扇区数
+; --------------------------------------------------------
+    mov esi, eax    ; backup eax
+    mov di, cx      ; backup cx
+
+; 读写硬盘
+; 第一步：设置要读取的扇区数
+    mov dx, 0x1f2
+    mov al, cl
+    out dx, al  ; 读取的扇区数
+
+    mov eax, esi    ; 恢复 ax
+
+; 第二步：将 lba 地址存入 0x1f3 - 0x1f6
+    ; lba 地址7-0位写入端口 0x1f3
+    mov dx, 0x1f3
+    out dx, al
+
+    ; lba 地址15-8位写入端口 0x1f4
+    mov dx, 0x1f4
+    mov cl, 8   ; cl 前面用完了，这里可以直接用
+    shr eax, cl ; 右移8位，中间8位变成低8位
+    out dx, al
+
+    ; lba 地址23-16位写入端口 0x1f5
+    shr eax, cl
+    mov dx, 0x1f5
+    out dx, al
+
+    shr eax, cl
+    and al, 0x0f    ; 这里只需要低4位, lba 地址 24-27 位
+    or al, 0xe0     ; 7-4位设置为 1110，表示 lba 模式
+    mov dx, 0x1f6
+    out dx, al
+
+; 第三步：向 0x1f7 端口写入读命令 0x20
+    mov dx, 0x1f7
+    mov al, 0x20
+    out dx, al
+
+; 第四步：检测硬盘专题
+
+.not_ready:
+    ; 同一个端口 0x1f7
+    nop
+    in al, dx
+    and al, 0x88    ; 第三位为1表示硬盘控制器已经准备好数据传输
+                    ; 第七位位1表示硬盘忙
+    cmp al, 0x08
+    jnz .not_ready
+
+; 第五步：从 0x1f0 端口读取数据
+    mov ax, di
+    mov dx, 256
+    mul dx
+    mov cx, ax
+    mov dx, 0x1f0
+.go_on_read:
+    in ax, dx
+    mov [ebx], ax
+    add ebx, 2
+    loop .go_on_read
+    ret
 

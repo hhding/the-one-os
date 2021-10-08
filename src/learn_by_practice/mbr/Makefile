@@ -14,15 +14,17 @@ OBJCOPY = objcopy
 ASMBFLAGS       = -f elf -w-orphan-labels
 #CFLAGS          = -c -Os -std=c99 -m32 -Wall -Wshadow -W -Wconversion -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable
 CFLAGS          = -c -Os -std=c99 -m32 -Wall -Wshadow -W -Wconversion -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables
-LDFLAGS         = -s -static -T hello.lds -n -Map HelloOS.map
+LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 OJCYFLAGS       = -S -O binary
 
 
 bin: mbr.bin loader.bin kernel.bin
-	@ls *.bin
+	@dd if=mbr.bin of=/mnt/d/mbr bs=512 seek=0 conv=notrunc
+	@dd if=loader.bin of=/mnt/d/mbr bs=512 seek=1 conv=notrunc
+	@dd if=kernel.bin of=/mnt/d/mbr bs=512 seek=9 conv=notrunc
 
 kernel.bin: kernel.o vgastr.o
-	$(LD) -s -static -m elf_i386 -Ttext 0xc0001500 -e main -o $@ kernel.o vgastr.o
+	$(LD) $(LDFLAGS) -o $@ kernel.o vgastr.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@	

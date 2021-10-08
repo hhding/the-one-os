@@ -3,6 +3,10 @@
 LOADER_BASE_ADDR equ 0x8200
 LOADER_START_SELECTOR equ 0x2
 
+KERNEL_BIN_BASE_ADDR equ 0x70000
+KERNEL_START_SECTOR equ 0x9
+KERNEL_ENTRY_POINT equ 0xc0001500
+
 ;------------------ gdt 描述符属性
 ; 总共段基址 32 位，段界限 20 位，段界限范围结合G位来确定最终界限
 ; 段基址 31-24，8比特

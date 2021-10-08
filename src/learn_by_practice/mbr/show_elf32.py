@@ -91,7 +91,7 @@ with open(file_name, "rb") as f:
     print("================ Program header =========================")
     ph_headers = ["offset"] + [h[0] for h in elf_program_header]
     ph_list = [ph_headers]
-    for i in range(7):
+    for i in range(4):
         fields = [hex(f.tell())]
         for note, cnt, fmt in elf_program_header:
             value = get_data(f, cnt, fmt)

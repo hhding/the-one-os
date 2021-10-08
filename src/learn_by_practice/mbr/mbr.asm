@@ -7,7 +7,8 @@ entry:
     mov es, ax
     mov ss, ax
     mov fs, ax
-    mov sp, 0x8000  ; 0x7c00 -> 0x8000: Total 1024 Byte, 512B for MBR and 512B for stack
+    mov sp, 0x8000  ; 0x7c00 -> 0x8000
+                    ; Total 1024 Byte, 512B for MBR and 512B for stack
 
     mov si, msg_hello
     call putloop
@@ -20,6 +21,7 @@ entry:
 	mov dh, 0	; head
 	mov cl, 2	; sector
     call read_disk_loop
+
 	mov si, boot_msg
     call putloop
 	jmp 0x8200
