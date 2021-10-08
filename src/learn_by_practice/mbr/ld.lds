@@ -8,6 +8,7 @@ SECTIONS
     . = 0xc0001500;
     .text :
     {
+        *(.text.startup)
         *(.text)
     }
 

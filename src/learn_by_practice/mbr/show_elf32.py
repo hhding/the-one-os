@@ -6,7 +6,7 @@ import struct
 if len(sys.argv) != 2:
     print(sys.argv[0], "elf_file_path")
 
-def get_data(f, count, fmt):
+def get_data(f, count, fmt, offset=None):
     data = f.read(count)
     if fmt:
         data = hex(struct.unpack(fmt, data)[0])
@@ -83,15 +83,17 @@ summary_info = '''========== ELF 格式总体说明 =========
 print(summary_info)
 with open(file_name, "rb") as f:
     print("================ ELF header =========================")
+    elf_header_dict = dict()
     for note, cnt, fmt in elf_header:
         offset = f.tell()
         value = get_data(f, cnt, fmt)
+        elf_header_dict[note] = value
         print(hex(offset), note, value)
 
     print("================ Program header =========================")
     ph_headers = ["offset"] + [h[0] for h in elf_program_header]
     ph_list = [ph_headers]
-    for i in range(4):
+    for i in range(int(elf_header_dict['e_phnum'], 16)):
         fields = [hex(f.tell())]
         for note, cnt, fmt in elf_program_header:
             value = get_data(f, cnt, fmt)

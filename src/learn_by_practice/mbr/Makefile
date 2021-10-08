@@ -33,4 +33,4 @@ kernel.bin: kernel.o vgastr.o
 	$(ASM) -o $@ $<
 
 clean:
-	$(RM) -f *.o *.bin
+	$(RM) -f *.o *.bin *.map

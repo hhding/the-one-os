@@ -121,6 +121,14 @@ p_mode_start:
     mov ebx, KERNEL_BIN_BASE_ADDR
     mov ecx, 200
     call rd_disk_m_32
+    
+    jmp SELECTOR_CODE:enter_kernel
+
+enter_kernel:
+    call kernel_init
+    mov esp, 0xc009f000
+    jmp KERNEL_ENTRY_POINT
+
 
     mov ax, SELECTOR_VIDEO
     mov gs, ax
@@ -141,7 +149,42 @@ kernel_init:
     mov cx, [KERNEL_BIN_BASE_ADDR + 0x2c]
     
 .each_segment:
-    ;cmp byte [ebx]
+    cmp dword [ebx + 0], 0x1
+    jne .next_segment
+    ; memcpy(dst, src, size) <-  从右向左压栈
+    push dword [ebx + 16]   ; p_filesz, size
+    mov eax, [ebx + 4]      ; p_offset
+    add eax, KERNEL_BIN_BASE_ADDR   ; src
+    push eax
+    push dword [ebx + 8]    ; p_vaddr, dst
+    
+    call mem_cpy
+    add esp, 12
+
+.next_segment:
+    add ebx, edx
+    loop .each_segment
+    ret
+
+; --------------------------------------------------------
+; 输入：栈中三个参数（dst，src，size）
+; 输出：无
+; --------------------------------------------------------
+mem_cpy:
+    cld ; 给 movsb 用，会自动修改 esi，edi
+    push ebp
+    mov ebp, esp
+    push ecx    ; ecx 在前面有用，先备份，给 movsb 用
+
+    mov edi, [ebp + 8]  ; dst
+    mov esi, [ebp + 12] ; src
+    mov ecx, [ebp + 16] ; size
+    rep movsb
+
+    pop ecx
+    pop ebp
+    ret
+
 ; --------------------------------------------------------
 ; 功能：读取硬盘 n 个扇区
 rd_disk_m_32:

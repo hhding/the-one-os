@@ -3,5 +3,5 @@
 void main()
 {
 	printf("Hello C Code OS!");
-	return;
+	while(1) {};
 }	
