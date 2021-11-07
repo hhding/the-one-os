@@ -27,11 +27,11 @@ bin: mbr.bin loader.bin kernel.bin
 kernel.bin: main.o vgastr.o interrupt.o interrupt_helper.o
 	$(LD) $(LDFLAGS) -o $@ main.o vgastr.o interrupt.o interrupt_helper.o
 
+#interrupt_helper.o: interrupt_helper.c
+#	$(ASM) -f elf -o $@ $<
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@	
-
-interrupt_helper.o: interrupt_helper.c
-	$(ASM) -f elf -o $@ $<
 
 %.bin: %.asm
 	$(ASM) -o $@ $<

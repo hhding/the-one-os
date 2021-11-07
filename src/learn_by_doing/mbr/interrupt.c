@@ -54,8 +54,10 @@ static void pic_init(void) {
     outb (PIC_S_DATA, 0x01);
 
     // 打开从片 IR0, 就是时钟中断
-    outb (PIC_M_DATA, 0xfe);
-    outb (PIC_S_DATA, 0xff);
+    //outb (PIC_M_DATA, 0xfe);
+    //outb (PIC_S_DATA, 0xff);
+    outb (PIC_M_DATA, 0xf9);
+    outb (PIC_S_DATA, 0xef);
 }
 
 void intr_handler21(void) {
