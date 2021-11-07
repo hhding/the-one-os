@@ -1,7 +1,14 @@
+#include "interrupt.h"
+#include "global.h"
+#include "stdint.h"
+#include "io.h"
+
 #define PIC_M_CTRL 0x20
 #define PIC_M_DATA 0x21
 #define PIC_S_CTRL 0xa0
 #define PIC_S_DATA 0xa1
+
+#define IDT_DESC_CNT 0X21 
 
 struct gate_desc {
     uint16_t func_offset_low_word;
@@ -10,9 +17,9 @@ struct gate_desc {
 
     uint8_t attribute;
     uint16_t func_offset_high_word;
-}
+};
 
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function);
+// idt 在这个C程序的数据段，具体地址取决于链接和载入
 static struct gate_desc idt[IDT_DESC_CNT];
 
 static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) {
@@ -24,9 +31,8 @@ static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler 
 }
 
 static void idt_desc_init(void) {
-    int i;
-    for ( i = 0; i < IDT_DESC_CNT; i++ ) {
-        make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
+    for ( int i = 0; i < IDT_DESC_CNT; i++ ) {
+        make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, 0);
     }
 }
 
