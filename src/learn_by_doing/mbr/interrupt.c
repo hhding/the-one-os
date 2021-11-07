@@ -2,13 +2,16 @@
 #include "global.h"
 #include "stdint.h"
 #include "io.h"
+#include "vgastr.h"
 
 #define PIC_M_CTRL 0x20
 #define PIC_M_DATA 0x21
 #define PIC_S_CTRL 0xa0
 #define PIC_S_DATA 0xa1
 
-#define IDT_DESC_CNT 0X21 
+#define IDT_DESC_CNT 0x22
+
+extern intr_handler asm_intr21_entry;
 
 struct gate_desc {
     uint16_t func_offset_low_word;
@@ -34,6 +37,7 @@ static void idt_desc_init(void) {
     for ( int i = 0; i < IDT_DESC_CNT; i++ ) {
         make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, 0);
     }
+    make_idt_desc(&idt[0x21], IDT_DESC_ATTR_DPL0, asm_intr21_entry);
 }
 
 static void pic_init(void) {
@@ -52,6 +56,11 @@ static void pic_init(void) {
     // 打开从片 IR0, 就是时钟中断
     outb (PIC_M_DATA, 0xfe);
     outb (PIC_S_DATA, 0xff);
+}
+
+void intr_handler21(void) {
+    printf("got kb\n");
+    return;
 }
 
 void idt_init() {

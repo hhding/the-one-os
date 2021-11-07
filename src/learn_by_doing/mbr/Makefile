@@ -24,11 +24,14 @@ bin: mbr.bin loader.bin kernel.bin
 	@dd if=loader.bin of=/mnt/d/mbr bs=512 seek=1 conv=notrunc
 	@dd if=kernel.bin of=/mnt/d/mbr bs=512 seek=9 conv=notrunc
 
-kernel.bin: main.o vgastr.o interrupt.o
-	$(LD) $(LDFLAGS) -o $@ main.o vgastr.o interrupt.o
+kernel.bin: main.o vgastr.o interrupt.o interrupt_helper.o
+	$(LD) $(LDFLAGS) -o $@ main.o vgastr.o interrupt.o interrupt_helper.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@	
+
+interrupt_helper.o: interrupt_helper.c
+	$(ASM) -f elf -o $@ $<
 
 %.bin: %.asm
 	$(ASM) -o $@ $<
