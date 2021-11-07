@@ -130,7 +130,8 @@ enter_kernel:
     jmp KERNEL_ENTRY_POINT
 
 
-    mov ax, SELECTOR_VIDEO
+    ; 先不区分数据和video选择子，64位后主要还是靠页表区分
+    mov ax, SELECTOR_DATA
     mov gs, ax
     mov byte [gs:0], 'P'
 
