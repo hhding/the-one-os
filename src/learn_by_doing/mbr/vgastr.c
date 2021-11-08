@@ -1,5 +1,6 @@
 #include "stdint.h"
 #include "io.h"
+#include <stdarg.h>
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -54,7 +55,7 @@ void update_cursor(uint16_t pos)
 	outb(CRT_CTRL_DATA_R, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-void put_char(char c)
+void putchar(char c)
 {
     char* p_strdst = (char*)(0xb8000);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
@@ -83,18 +84,78 @@ void put_char(char c)
     return;
 }
                 
-void _strwrite(char* string)
-{
-    while (*string)
-    {
-        put_char(*string);
-        string++;
+
+void puts(char *s) {
+    char c;
+    while(c = *s++) {
+        putchar(c);
     }
-    return;
 }
 
-void printf(char* fmt, ...)
+void itoa(int value, char* buffer, int scale) {
+    char * p = buffer;
+    char * p_s;
+    unsigned int tmp_int = value;
+    char c;
+    if(value < 0) {
+        *p++ = '-';
+        tmp_int = (unsigned long)(-(long)value);
+    }
+    p_s = p;
+
+    do {
+        *p++ = tmp_int % scale + '0';
+        tmp_int /= scale;
+    } while (tmp_int > 0);
+    *p-- = '\0';
+
+    do {
+        c = *p;
+        *p-- = *p_s;
+        *p_s++ = c;
+    } while(p > p_s);
+}
+
+
+int printf(char* fmt, ...)
 {
-    _strwrite(fmt);
-    return;
+    va_list arg;
+    int int_temp;
+    char ch;
+    char char_temp;
+    char buffer[512];
+    char *string_temp;
+
+    va_start(arg, fmt);
+    while( ch = *fmt++ ) {
+        if ('%' == ch) {
+            switch (ch = *fmt++) {
+                case '%':
+                    putchar('%');
+                    break;
+                case 'c':
+                    char_temp = va_arg(arg, int);
+                    putchar(char_temp);
+                    break;
+                case 's':
+                    string_temp = va_arg(arg, char *);
+                    puts(string_temp);
+                    break;
+                case 'd':
+                    int_temp = va_arg(arg, int);
+                    itoa(int_temp, buffer, 10);
+                    puts(buffer);
+                    break;
+                case 'x':
+                    int_temp = va_arg(arg, int);
+                    itoa(int_temp, buffer, 16);
+                    puts(buffer);
+                    break;
+            }
+        } else {
+            putchar(ch);
+        }
+    }
+    va_end(arg);
+    return 0;
 }

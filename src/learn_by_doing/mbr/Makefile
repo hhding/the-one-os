@@ -14,7 +14,7 @@ OBJCOPY = objcopy
 ASMBFLAGS       = -f elf -w-orphan-labels
 #CFLAGS          = -c -Os -std=c99 -m32 -Wall -Wshadow -W -Wconversion -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable
 #CFLAGS          = -c -Os -std=c99 -m32 -Wall -Wshadow -W -Wconversion -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables
-CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables
+CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic
 LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 OJCYFLAGS       = -S -O binary
 
@@ -27,8 +27,8 @@ bin: mbr.bin loader.bin kernel.bin
 kernel.bin: main.o vgastr.o interrupt.o interrupt_helper.o
 	$(LD) $(LDFLAGS) -o $@ main.o vgastr.o interrupt.o interrupt_helper.o
 
-#interrupt_helper.o: interrupt_helper.c
-#	$(ASM) -f elf -o $@ $<
+interrupt_helper.o: interrupt_helper.asm
+	$(ASM) -f elf -o $@ $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@	

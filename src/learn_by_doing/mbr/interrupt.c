@@ -11,7 +11,7 @@
 
 #define IDT_DESC_CNT 0x22
 
-extern intr_handler asm_intr21_entry;
+intr_handler asm_intr21_entry(void);
 
 struct gate_desc {
     uint16_t func_offset_low_word;
@@ -34,7 +34,8 @@ static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler 
 }
 
 static void idt_desc_init(void) {
-    for ( int i = 0; i < IDT_DESC_CNT; i++ ) {
+    int i = 0;
+    for ( i = 0; i < IDT_DESC_CNT; i++ ) {
         make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, 0);
     }
     make_idt_desc(&idt[0x21], IDT_DESC_ATTR_DPL0, asm_intr21_entry);
@@ -56,11 +57,12 @@ static void pic_init(void) {
     // 打开从片 IR0, 就是时钟中断
     //outb (PIC_M_DATA, 0xfe);
     //outb (PIC_S_DATA, 0xff);
-    outb (PIC_M_DATA, 0xf9);
-    outb (PIC_S_DATA, 0xef);
+    outb (PIC_M_DATA, 0xfd);
+    outb (PIC_S_DATA, 0xff);
 }
 
 void intr_handler21(void) {
+    inb(0x60);
     printf("got kb\n");
     return;
 }
