@@ -55,7 +55,7 @@ void update_cursor(uint16_t pos)
 	outb(CRT_CTRL_DATA_R, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-void putchar(char c)
+uint32_t putchar(char c)
 {
     char* p_strdst = (char*)(0xb8000);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
@@ -81,15 +81,18 @@ void putchar(char c)
             *(p_strdst + pos * 2) = c;
             update_cursor(pos + 1);
     }
-    return;
+    return 1;
 }
                 
 
-void puts(char *s) {
+uint32_t puts(char *s) {
     char c;
-    while(c = *s++) {
+    int length = 0;
+    while ((c = *s++)) {
         putchar(c);
+        length ++;
     }
+    return length;
 }
 
 void itoa(int value, char* buffer, int scale) {
@@ -97,6 +100,7 @@ void itoa(int value, char* buffer, int scale) {
     char * p_s;
     unsigned int tmp_int = value;
     char c;
+    int i2c;
     if(value < 0) {
         *p++ = '-';
         tmp_int = (unsigned long)(-(long)value);
@@ -104,7 +108,8 @@ void itoa(int value, char* buffer, int scale) {
     p_s = p;
 
     do {
-        *p++ = tmp_int % scale + '0';
+        i2c = tmp_int % scale; 
+        *p++ = i2c >=10? i2c - 10 + 'a': i2c + '0';
         tmp_int /= scale;
     } while (tmp_int > 0);
     *p-- = '\0';
@@ -117,45 +122,46 @@ void itoa(int value, char* buffer, int scale) {
 }
 
 
-int printf(char* fmt, ...)
+uint32_t printf(char* fmt, ...)
 {
-    va_list arg;
-    int int_temp;
+    uint32_t int_temp;
     char ch;
     char char_temp;
     char buffer[512];
     char *string_temp;
+    va_list arg;
+    uint32_t length = 0;
 
     va_start(arg, fmt);
-    while( ch = *fmt++ ) {
+
+    while (( ch = *fmt++ )) {
         if ('%' == ch) {
-            switch (ch = *fmt++) {
+            switch ((ch = *fmt++)) {
                 case '%':
-                    putchar('%');
+                    length += putchar('%');
                     break;
                 case 'c':
                     char_temp = va_arg(arg, int);
-                    putchar(char_temp);
+                    length += putchar(char_temp);
                     break;
                 case 's':
                     string_temp = va_arg(arg, char *);
-                    puts(string_temp);
+                    length += puts(string_temp);
                     break;
                 case 'd':
                     int_temp = va_arg(arg, int);
                     itoa(int_temp, buffer, 10);
-                    puts(buffer);
+                    length += puts(buffer);
                     break;
                 case 'x':
                     int_temp = va_arg(arg, int);
                     itoa(int_temp, buffer, 16);
-                    puts(buffer);
+                    length += puts(buffer);
                     break;
             }
-        } else {
-            putchar(ch);
-        }
+        } else { length += putchar(ch); }
     }
+
     va_end(arg);
-    return 0;
+    return length;
 }

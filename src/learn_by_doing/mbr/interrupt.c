@@ -62,8 +62,9 @@ static void pic_init(void) {
 }
 
 void intr_handler21(void) {
-    inb(0x60);
-    printf("got kb\n");
+    int data;
+    data = inb(0x60);
+    printf("got kb 0x%x\n", data);
     return;
 }
 
