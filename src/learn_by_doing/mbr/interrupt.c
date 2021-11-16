@@ -2,7 +2,7 @@
 #include "global.h"
 #include "stdint.h"
 #include "io.h"
-#include "vgastr.h"
+#include "printk.h"
 
 #define PIC_M_CTRL 0x20
 #define PIC_M_DATA 0x21
@@ -64,7 +64,7 @@ static void pic_init(void) {
 void intr_handler21(void) {
     int data;
     data = inb(0x60);
-    printf("got kb 0x%x\n", data);
+    printk("got kb 0x%x\n", data);
     return;
 }
 

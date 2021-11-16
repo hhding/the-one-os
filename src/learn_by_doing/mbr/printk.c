@@ -122,7 +122,7 @@ void itoa(int value, char* buffer, int scale) {
 }
 
 
-uint32_t printf(char* fmt, ...)
+uint32_t printk(char* fmt, ...)
 {
     uint32_t int_temp;
     char ch;
