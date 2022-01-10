@@ -11,6 +11,9 @@
 
 #define IDT_DESC_CNT 0x22
 
+#define EFLAGS_IF 0x00000200
+#define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
+
 intr_handler asm_intr21_entry(void);
 
 struct gate_desc {
@@ -74,5 +77,38 @@ void idt_init() {
 
     uint64_t idt_operand = ((sizeof(idt) -1) | ((uint64_t) ((uint32_t)idt << 16)));
     asm volatile("lidt %0": : "m" (idt_operand));
+}
+
+enum intr_status intr_enable() {
+    enum intr_status old_status;
+    if (INTR_ON == intr_get_status()) {
+        old_status = INTR_ON;
+    } else {
+        old_status = INTR_OFF;
+        asm volatile("sti");
+    }
+    return old_status;
+}
+
+
+enum intr_status intr_disable() {
+    enum intr_status old_status;
+    if (INTR_ON == intr_get_status()) {
+        old_status = INTR_ON;
+        asm volatile("cli" : : : "memory");
+    } else {
+        old_status = INTR_OFF;
+    }
+    return old_status;
+}
+
+enum intr_status intr_set_status(enum intr_status status) {
+    return status & INTR_ON? intr_enable(): intr_disable();
+}
+
+enum intr_status intr_get_status() {
+    uint32_t eflags = 0;
+    GET_EFLAGS(eflags);
+    return (eflags & EFLAGS_IF) ? INTR_ON: INTR_OFF;
 }
 
