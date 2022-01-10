@@ -19,7 +19,7 @@ LDFLAGS         = -static -T ld.lds -n -Map hello.map
 #LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 OJCYFLAGS       = -S -O binary
 
-objfiles = main.o printk.o interrupt.o interrupt_helper.o debug.o string.o
+objfiles = main.o printk.o interrupt.o interrupt_helper.o debug.o string.o bitmap.o
 
 bin: mbr.bin loader.bin kernel.bin
 	@dd if=mbr.bin of=/mnt/d/mbr bs=512 seek=0 conv=notrunc
