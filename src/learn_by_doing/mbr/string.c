@@ -1,16 +1,18 @@
 #include "debug.h"
 #include "string.h"
+#include "stdint.h"
+#define NULL ((void*)0)
 
 void memset(void* dst_, uint8_t value, uint32_t size) {
     ASSERT(dst_ != NULL);
     uint8_t * dst = (uint8_t*) dst_;
-    while (size-- > 0) dst++ = value;
+    while (size-- > 0) *dst++ = value;
 }
 
 void memcpy(void* dst_, const void* src_, uint32_t size) {
     uint8_t * dst = (uint8_t*) dst_;
     const uint8_t * src = (uint8_t*) src_;
-    while (size-- > 0) dst++ = src++;
+    while (size-- > 0) *dst++ = *src++;
 }
 
 int memcmp(const void* a_, const void* b_, uint32_t size) {
@@ -21,7 +23,7 @@ int memcmp(const void* a_, const void* b_, uint32_t size) {
             return *a > *b? 1:-1;
         }
         a++;
-        b++
+        b++;
     }
     return 0;
 }
@@ -40,4 +42,7 @@ uint32_t strlen(const char* str) {
     return str - p - 1;
 }
 
-
+int8_t strcmp(const char* a, const char* b) {
+    ASSERT(a != NULL && b != NULL);
+    while(*a++ == *b++);
+}
