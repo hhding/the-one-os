@@ -49,7 +49,7 @@ uint32_t* pde_ptr(uint32_t vaddr) {
     return pde;
 }
 
-static void* pmalloc(struct pool* m_pool) {
+static void* palloc(struct pool* m_pool) {
     int bit_idx = bitmap_scan(&m_pool->pool_bitmap, 1);
     if(bit_idx == -1) return NULL;
     bitmap_set(&m_pool->pool_bitmap, bit_idx, 1);
@@ -62,12 +62,35 @@ static void page_table_add(void* _vaddr, void* _page_phyaddr) {
     uint32_t* pde = pde_ptr(vaddr);
     uint32_t* pte = pte_ptr(vaddr);
     if (!(*pde & 0x00000001)) {    // 页目录如果不存在，那么就分配一个
-        uint32_t pde_phyaddr = (uint32_t)pmalloc(&kernel_pool);
+        uint32_t pde_phyaddr = (uint32_t)palloc(&kernel_pool);
         *pde = (pde_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
+        // 前面20位即可
         memset((void*)((int)pte & 0xfffff000), 0, PAGE_SIZE);
     }
     ASSERT(!(*pte & 0x00000001)); // 既然是分配，也表项不应该存在
     *pte = (page_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
+}
+
+void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
+    void* vaddr_start = vaddr_get(pf, pg_cnt);
+    if(vaddr_start == NULL) return NULL;
+    struct pool* mem_pool = pf & PF_KERNEL ? &kernel_pool : &user_pool;
+    uint32_t vaddr = (uint32_t)vaddr_start, cnt = pg_cnt;
+    while(cnt--) {
+        void* page_phyaddr = palloc(mem_pool);
+        if(page_phyaddr == NULL) return NULL;
+        page_table_add((void*)vaddr_start, page_phyaddr);
+        vaddr += PAGE_SIZE;
+    }
+    return vaddr_start;
+}
+
+void* get_kernel_pages(uint32_t pg_cnt) {
+    void* vaddr = malloc_page(PF_KERNEL, pg_cnt);
+    if(vaddr != NULL) {
+        memset(vaddr, 0, pg_cnt * PAGE_SIZE);
+    }
+    return vaddr;
 }
 
 static void mem_pool_init(uint32_t all_mem) {
