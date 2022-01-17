@@ -22,8 +22,11 @@ int bitmap_scan(struct bitmap* btmap, uint32_t cnt) {
             continue;
         } else {
             last_good_idx = i;
-            if((last_good_idx - last_bad_idx) == cnt)
-                return last_bad_idx + 1;
+            if(cnt == 1) 
+                return last_good_idx;
+            else 
+                if((last_good_idx - last_bad_idx) == cnt)
+                    return last_bad_idx + 1;
         }
     }
     return -1;

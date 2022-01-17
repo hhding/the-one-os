@@ -28,7 +28,7 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
         bit_idx_start = bitmap_scan(&kernel_vaddr.vaddr_bitmap, pg_cnt);
         if(bit_idx_start == -1) return NULL;
         while(pg_cnt--) {
-            bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + pg_cnt -1, 1);
+            bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + pg_cnt, 1);
         }
         vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start * PAGE_SIZE;
     } else {
@@ -57,10 +57,14 @@ static void* palloc(struct pool* m_pool) {
     return (void*)page_phyaddr;
 }
 
-static void page_table_add(void* _vaddr, void* _page_phyaddr) {
+//static void page_table_add(void* _vaddr, void* _page_phyaddr) {
+void page_table_add(void* _vaddr, void* _page_phyaddr) {
     uint32_t vaddr = (uint32_t)_vaddr, page_phyaddr = (uint32_t)_page_phyaddr;
+    printk("vaddr: 0x%x phyaddr: 0x%x\n", vaddr, page_phyaddr);
     uint32_t* pde = pde_ptr(vaddr);
     uint32_t* pte = pte_ptr(vaddr);
+    printk("pde: 0x%x pte: 0x%x\n", pde, pte);
+    ASSERT(1==2);
     if (!(*pde & 0x00000001)) {    // 页目录如果不存在，那么就分配一个
         uint32_t pde_phyaddr = (uint32_t)palloc(&kernel_pool);
         *pde = (pde_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
@@ -79,6 +83,7 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
     while(cnt--) {
         void* page_phyaddr = palloc(mem_pool);
         if(page_phyaddr == NULL) return NULL;
+        printk("Mapping: 0x%x => 0x%x\n", vaddr_start, (uint32_t)page_phyaddr);
         page_table_add((void*)vaddr_start, page_phyaddr);
         vaddr += PAGE_SIZE;
     }
@@ -109,11 +114,13 @@ static void mem_pool_init(uint32_t all_mem) {
     kernel_pool.pool_size = kernel_free_pages * PAGE_SIZE;
     kernel_pool.pool_bitmap.bits = (void*)MEMORY_BITMAP_BASE;
     kernel_pool.pool_bitmap.btmap_bytes_len = kbm_length;
+    printk("        kernel: phy_addr_start: 0x%x pool_size: %d kbytes\n", kp_start, kernel_pool.pool_size/1024);
 
     user_pool.phy_addr_start = up_start;
     user_pool.pool_size = user_free_pages * PAGE_SIZE;
     user_pool.pool_bitmap.bits = (void*)(MEMORY_BITMAP_BASE + kbm_length);
-    kernel_pool.pool_bitmap.btmap_bytes_len = ubm_length;
+    user_pool.pool_bitmap.btmap_bytes_len = ubm_length;
+    printk("        user: phy_addr_start: 0x%x pool_size: %d kbytes\n", up_start, user_pool.pool_size/1024);
 
     kernel_vaddr.vaddr_start = K_HEEP_START;
     kernel_vaddr.vaddr_bitmap.btmap_bytes_len = kbm_length;

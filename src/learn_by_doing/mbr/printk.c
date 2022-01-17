@@ -95,12 +95,13 @@ uint32_t puts(char *s) {
     return length;
 }
 
-void itoa(int value, char* buffer, int scale) {
+void itoa(uint32_t value, char* buffer, int scale) {
     char * p = buffer;
     char * p_s;
-    unsigned int tmp_int = value;
+    uint32_t tmp_int = value;
     char c;
-    int i2c;
+    uint32_t i2c;
+
     if(value < 0) {
         *p++ = '-';
         tmp_int = (unsigned long)(-(long)value);
