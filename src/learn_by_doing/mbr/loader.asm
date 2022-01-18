@@ -48,6 +48,7 @@ section loader vstart=LOADER_BASE_ADDR
 ;----------------- 创建页目录以及页表
 ; vaddr = 10bit PDE index + 10bit PTE index + 12bit offset(4096)
 setup_page:
+    ; 4K Bytes => 1 Page
     mov ecx, 4096
     mov esi, 0
 .clear_page_dir:
@@ -57,16 +58,18 @@ setup_page:
 
 ; 开始创建页目录项(PDE)
 .create_pde ; 创建 Page Directory Entry
+    ; PAGE_DIR_TABLE_POS equ 0x100000 1M 开始
     mov eax, PAGE_DIR_TABLE_POS
-    add eax, 0x1000 ; 从这个地址开始，我们用来放页表（PTE）
+    ; 1M + 4K => 0x101000 
+    add eax, 0x1000 ; 4K 页目录，紧接这个页目录，我们用来放页表（PTE）
     mov ebx, eax    ; 保存 eax，后面要把 eax 用于 PDE
     or eax, PG_US_U | PG_RW_W | PG_P    ; 属性位7，US=1, RW=1, P=1
     ; 两个都指向第一个页表
     mov [PAGE_DIR_TABLE_POS + 0x0], eax     ; 第一个4M，当前程序不受影响
-    mov [PAGE_DIR_TABLE_POS + 0xc00], eax   ; 768，3072==1024x3，3GB的高位
+    mov [PAGE_DIR_TABLE_POS + 0xc00], eax   ; 768，0xc00=3072==1024x3，3GB的高位
 
     sub eax, 0x1000                         ; 算出页目录位置
-    mov [PAGE_DIR_TABLE_POS + 0x1000], eax  ; 最后一个页目录指向页表自身
+    mov [PAGE_DIR_TABLE_POS + 0x1000 - 4], eax  ; 最后一个页目录指向页表自身
 
 ; 创建页表项(PTE)，这个页表仅仅初始化了1MB内存，映射到低端1M内存
     mov ecx, 256   ; 分配1MB内存，每个PTE 4KB, PDE 在1MB上面
@@ -83,7 +86,7 @@ setup_page:
     add eax, 0x2000             ; 第二个页表
     or eax, PG_US_U | PG_RW_W | PG_P    ; 属性位7，US=1, RW=1, P=1
     mov ebx, PAGE_DIR_TABLE_POS
-    mov ecx, 256
+    mov ecx, 256    ; 范围为第769~1022的所有目录项数量
     mov esi, 769
     ; 页目录指向情况
     ; 0x0 --> 0 --> 初始化为1MB，最大4MB

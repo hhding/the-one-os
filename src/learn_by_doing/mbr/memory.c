@@ -64,7 +64,7 @@ void page_table_add(void* _vaddr, void* _page_phyaddr) {
     uint32_t* pde = pde_ptr(vaddr);
     uint32_t* pte = pte_ptr(vaddr);
     printk("pde: 0x%x pte: 0x%x\n", pde, pte);
-    ASSERT(1==2);
+    ASSERT(1==3);
     if (!(*pde & 0x00000001)) {    // 页目录如果不存在，那么就分配一个
         uint32_t pde_phyaddr = (uint32_t)palloc(&kernel_pool);
         *pde = (pde_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
