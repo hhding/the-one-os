@@ -57,14 +57,12 @@ static void* palloc(struct pool* m_pool) {
     return (void*)page_phyaddr;
 }
 
-//static void page_table_add(void* _vaddr, void* _page_phyaddr) {
-void page_table_add(void* _vaddr, void* _page_phyaddr) {
+static void page_table_add(void* _vaddr, void* _page_phyaddr) {
     uint32_t vaddr = (uint32_t)_vaddr, page_phyaddr = (uint32_t)_page_phyaddr;
-    printk("vaddr: 0x%x phyaddr: 0x%x\n", vaddr, page_phyaddr);
+    // printk("vaddr: 0x%x phyaddr: 0x%x\n", vaddr, page_phyaddr);
     uint32_t* pde = pde_ptr(vaddr);
     uint32_t* pte = pte_ptr(vaddr);
-    printk("pde: 0x%x pte: 0x%x\n", pde, pte);
-    ASSERT(1==3);
+    // printk("pde: 0x%x pte: 0x%x\n", pde, pte);
     if (!(*pde & 0x00000001)) {    // 页目录如果不存在，那么就分配一个
         uint32_t pde_phyaddr = (uint32_t)palloc(&kernel_pool);
         *pde = (pde_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
@@ -83,8 +81,8 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
     while(cnt--) {
         void* page_phyaddr = palloc(mem_pool);
         if(page_phyaddr == NULL) return NULL;
-        printk("Mapping: 0x%x => 0x%x\n", vaddr_start, (uint32_t)page_phyaddr);
-        page_table_add((void*)vaddr_start, page_phyaddr);
+        // printk("Mapping: 0x%x => 0x%x\n", vaddr, (uint32_t)page_phyaddr);
+        page_table_add((void*)vaddr, page_phyaddr);
         vaddr += PAGE_SIZE;
     }
     return vaddr_start;

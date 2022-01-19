@@ -14,7 +14,8 @@ bool bitmap_scan_test(struct bitmap* btmap, uint32_t bit_idx) {
 }
 
 int bitmap_scan(struct bitmap* btmap, uint32_t cnt) {
-    uint32_t last_bad_idx = 0;
+    // FIXME, last_bad_idx will overflow..
+    int last_bad_idx = -1;
     uint32_t last_good_idx = 0;
     for(uint32_t i=0; i < btmap->btmap_bytes_len*8; i++) {
         if (bitmap_scan_test(btmap, i)) {

@@ -76,6 +76,9 @@ setup_page:
     mov esi, 0
     mov edx, PG_US_U | PG_RW_W | PG_P   ; 0-1MB 的物理内存地址
 .create_pte:
+    ; 4个字节递增，每递增4个字节就增长一个 PTE
+    ; edx 这里是从 0 开始，0，4k，8k，总共256个，也就是覆盖了 1MB
+    ; 查看方式 xp 0x101000
     mov [ebx + esi*4], edx
     add edx, 4096
     inc esi
@@ -86,7 +89,7 @@ setup_page:
     add eax, 0x2000             ; 第二个页表
     or eax, PG_US_U | PG_RW_W | PG_P    ; 属性位7，US=1, RW=1, P=1
     mov ebx, PAGE_DIR_TABLE_POS
-    mov ecx, 256    ; 范围为第769~1022的所有目录项数量
+    mov ecx, 254    ; 范围为第769~1022的所有目录项数量
     mov esi, 769
     ; 页目录指向情况
     ; 0x0 --> 0 --> 初始化为1MB，最大4MB
@@ -110,11 +113,20 @@ p_mode_start:
     mov ss, ax
     call setup_page
     sgdt [gdt_ptr]
+
+   ;将gdt的基址加上0xc0000000使其成为内核所在的高地址
     mov ebx, [gdt_ptr + 2]
-    or dword [gdt_ptr + 2], 0xc0000000
-    add esp, 0xc0000000
+    or dword [ebx + 0x18 + 4], 0xc0000000      ;视频段是第3个段描述符,每个描述符是8字节,故0x18。
+                          ;段描述符的高4字节的最高位是段基址的31~24位
+
+    add dword [gdt_ptr + 2], 0xc0000000
+    add esp, 0xc0000000 ; 将栈指针同样映射到内核地址
+
+   ; 把页目录地址赋给cr3
     mov eax, PAGE_DIR_TABLE_POS
     mov cr3, eax
+
+   ; 打开cr0的pg位(第31位)
     mov eax, cr0
     or eax, 0x80000000
     mov cr0, eax
