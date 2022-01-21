@@ -1,6 +1,7 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
 #include "stdint.h"
+#include "list.h"
 
 // 定义了一个函数指针
 // 函数指针指向一个函数
@@ -76,8 +77,13 @@ struct thread_stack {
 struct task_struct {
    uint32_t* self_kstack;    // 各内核线程都用自己的内核栈
    enum task_status status;
-   uint8_t priority;         // 线程优先级
    char name[16];
+   uint8_t priority;         // 线程优先级
+   uint8_t ticks;           // 每次在 CPU 上执行的 ticks 数
+   uint32_t elapsed_ticks;  // 总共 ticks 数
+   struct list_elem general_tag;    // 丢到某个队列里面的时候用，表示某状态
+   struct list_elem all_list_tag;   // 所有进程清单，销毁了进程就没了
+   uint32_t *pgdir;         // 页表虚拟地址
    uint32_t stack_magic;     // 用这串数字做栈的边界标记,用于检测栈的溢出
 };
 
