@@ -6,6 +6,7 @@
 #include "interrupt.h"
 #include "list.h"
 #include "debug.h"
+#include "printk.h"
 
 #define PAGE_SIZE 4096
 
@@ -18,7 +19,7 @@ struct task_struct* main_thread;
 
 struct list thread_ready_list;
 struct list thread_all_list;
-//static struct list_elem* thread_tag;
+static struct list_elem* thread_tag;
 
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
@@ -75,4 +76,37 @@ static void make_main_thread(void) {
     list_append(&thread_all_list, &main_thread->all_list_tag);
 }
 
+void schedule() {
+    ASSERT(intr_get_status() == INTR_OFF);
+    printk("call schedule..\n");
+
+    struct task_struct * cur = running_thread();
+    if(cur->status == TASK_RUNNING) {
+        // 从 running 过来的时时间片用完了
+        ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
+        list_append(&thread_ready_list, &cur->general_tag);
+        cur->status = TASK_READY;
+        cur->ticks = cur->priority;
+    } else {
+        // TODO
+        // 其他状态处理
+    }
+    // 这个后面要 FIXME
+    ASSERT(!list_empty(&thread_ready_list));
+    thread_tag = NULL;
+    thread_tag = list_pop(&thread_ready_list);
+    struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
+    next->status = TASK_RUNNING;
+    printk("call switch_to..\n");
+    switch_to(cur, next);
+}
+
+void thread_init(void) {
+    printk("thread_init start\n");
+    list_init(&thread_ready_list);
+    list_init(&thread_all_list);
+
+    make_main_thread();
+    printk("thread_init done\n");
+}
 

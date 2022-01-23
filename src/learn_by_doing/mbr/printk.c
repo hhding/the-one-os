@@ -102,10 +102,12 @@ void itoa(uint32_t value, char* buffer, int scale) {
     char c;
     uint32_t i2c;
 
+    /*
     if(value < 0) {
         *p++ = '-';
         tmp_int = (unsigned long)(-(long)value);
     }
+    */
     p_s = p;
 
     do {

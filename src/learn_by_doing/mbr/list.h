@@ -2,6 +2,14 @@
 #define __LIB_KERNEL_LIST_H
 #include "global.h"
 
+#define offset(struct_type, member) (int)(&((struct_type*)0)->member)
+#define elem2entry(struct_type, struct_member_name, elem_ptr) \
+    (struct_type*)((int)elem_ptr - offset(struct_type, struct_member_name))
+
+// struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
+// offset(struct task_struct, general_tag) => (int)(&((struct task_struct*)0)->general_tag)
+// 相当于随便找个地址，视其结构为 task_struct，然后取得 general_tag 成员的地址，即为其偏移
+// 反过来，成员的地址减去其和结构体的偏移长度，就是该结构体的地址
 
 struct list_elem {
     struct list_elem *prev;

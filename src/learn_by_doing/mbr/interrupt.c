@@ -9,12 +9,16 @@
 #define PIC_S_CTRL 0xa0
 #define PIC_S_DATA 0xa1
 
-#define IDT_DESC_CNT 0x22
+#define IDT_DESC_CNT 0x21
 
 #define EFLAGS_IF 0x00000200
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
 
+extern intr_handler intr_entry_table[IDT_DESC_CNT];     // 声明引用定义在ke
+
+char* intr_name[IDT_DESC_CNT];           // 用于保存异常的名字
 intr_handler asm_intr21_entry(void);
+intr_handler idt_table[IDT_DESC_CNT];        // 定义中断处理程序数组.在kern
 
 struct gate_desc {
     uint16_t func_offset_low_word;
@@ -39,9 +43,9 @@ static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler 
 static void idt_desc_init(void) {
     int i = 0;
     for ( i = 0; i < IDT_DESC_CNT; i++ ) {
-        make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, 0);
+        make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
     }
-    make_idt_desc(&idt[0x21], IDT_DESC_ATTR_DPL0, asm_intr21_entry);
+    // make_idt_desc(&idt[0x21], IDT_DESC_ATTR_DPL0, asm_intr21_entry);
 }
 
 static void pic_init(void) {
@@ -58,10 +62,10 @@ static void pic_init(void) {
     outb (PIC_S_DATA, 0x01);
 
     // 打开从片 IR0, 就是时钟中断
-    //outb (PIC_M_DATA, 0xfe);
-    //outb (PIC_S_DATA, 0xff);
-    outb (PIC_M_DATA, 0xfd);
+    outb (PIC_M_DATA, 0xfe);
     outb (PIC_S_DATA, 0xff);
+    //outb (PIC_M_DATA, 0xfd);
+    //outb (PIC_S_DATA, 0xff);
 }
 
 void intr_handler21(void) {
@@ -69,14 +73,6 @@ void intr_handler21(void) {
     data = inb(0x60);
     printk("got kb 0x%x\n", data);
     return;
-}
-
-void idt_init() {
-    idt_desc_init();
-    pic_init();
-
-    uint64_t idt_operand = ((sizeof(idt) -1) | ((uint64_t) ((uint32_t)idt << 16)));
-    asm volatile("lidt %0": : "m" (idt_operand));
 }
 
 enum intr_status intr_enable() {
@@ -110,5 +106,69 @@ enum intr_status intr_get_status() {
     uint32_t eflags = 0;
     GET_EFLAGS(eflags);
     return (eflags & EFLAGS_IF) ? INTR_ON: INTR_OFF;
+}
+
+static void general_intr_handler(uint8_t vec_nr) {
+    if(vec_nr == 0x27 || vec_nr == 0x2f) return;
+    update_cursor(0);
+    int cursor_pos = 0;
+    // 前4行清空
+    while(cursor_pos++ < 4*80) {
+        printk(" ");
+    }
+
+    update_cursor(0);
+    printk("!!!!!!!       exception message begin   !!!!!!!\n");
+    update_cursor(88);
+    printk(intr_name[vec_nr]);
+    if(vec_nr == 14) {  // Pagefault
+        int page_fault_vaddr = 0;
+        asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr));
+        printk("\npage fault addr is %x", page_fault_vaddr);
+    }
+    printk("\n!!!!!!!       exception message end     !!!!!!!\n");
+    while(1);
+}
+
+static void exception_init(void) {
+    for(int i = 0; i < IDT_DESC_CNT; i++) {
+        idt_table[i] = general_intr_handler;
+        intr_name[i] = "unknown";
+    }
+   intr_name[0] = "#DE Divide Error";
+   intr_name[1] = "#DB Debug Exception";
+   intr_name[2] = "NMI Interrupt";
+   intr_name[3] = "#BP Breakpoint Exception";
+   intr_name[4] = "#OF Overflow Exception";
+   intr_name[5] = "#BR BOUND Range Exceeded Exception";
+   intr_name[6] = "#UD Invalid Opcode Exception";
+   intr_name[7] = "#NM Device Not Available Exception";
+   intr_name[8] = "#DF Double Fault Exception";
+   intr_name[9] = "Coprocessor Segment Overrun";
+   intr_name[10] = "#TS Invalid TSS Exception";
+   intr_name[11] = "#NP Segment Not Present";
+   intr_name[12] = "#SS Stack Fault Exception";
+   intr_name[13] = "#GP General Protection Exception";
+   intr_name[14] = "#PF Page-Fault Exception";
+   // intr_name[15] 第15项是intel保留项，未使用
+   intr_name[16] = "#MF x87 FPU Floating-Point Error";
+   intr_name[17] = "#AC Alignment Check Exception";
+   intr_name[18] = "#MC Machine-Check Exception";
+   intr_name[19] = "#XF SIMD Floating-Point Exception";
+}
+
+void idt_init() {
+    printk("idt_init start\n");
+    idt_desc_init();
+    exception_init();
+    pic_init();
+
+    uint64_t idt_operand = ((sizeof(idt) -1) | ((uint64_t) ((uint32_t)idt << 16)));
+    asm volatile("lidt %0": : "m" (idt_operand));
+    printk("idt_init done\n");
+}
+
+void register_handler(uint8_t vector_no, intr_handler func) {
+    idt_table[vector_no] = func;
 }
 
