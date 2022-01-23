@@ -33,7 +33,7 @@ void main()
     printk("enable interrupt...\n");
     intr_enable();
 	while(1) {
-        //printk("Main ");
+        printk("Main ");
     };
     return;
 }

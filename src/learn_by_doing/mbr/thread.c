@@ -78,7 +78,6 @@ static void make_main_thread(void) {
 
 void schedule() {
     ASSERT(intr_get_status() == INTR_OFF);
-    printk("call schedule..\n");
 
     struct task_struct * cur = running_thread();
     if(cur->status == TASK_RUNNING) {
@@ -97,7 +96,6 @@ void schedule() {
     thread_tag = list_pop(&thread_ready_list);
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
     next->status = TASK_RUNNING;
-    printk("call switch_to..\n");
     switch_to(cur, next);
 }
 

@@ -35,20 +35,17 @@ void intr_timer_handler(void) {
     ASSERT(cur_thread->stack_magic == 20220120);
     cur_thread->elapsed_ticks++;
     ticks++;
-    printk("time interrupt %d\n", ticks);
 
     if(cur_thread->ticks == 0) {
-        printk("call to schedule\n");
         schedule();
     } else {
-        printk("dec ticks\n");
         cur_thread->ticks--;
     }
 }
 
 void timer_init() {
     printk("timer_init start\n");
-    frequency_set(COUNTER0_NO, COUNTER0_NO, READ_WRITE_LATCH, COUNTER_MODE, COUNTER0_VALUE);
+    frequency_set(CONTRER0_PORT, COUNTER0_NO, READ_WRITE_LATCH, COUNTER_MODE, COUNTER0_VALUE);
     register_handler(0x20, intr_timer_handler);
     printk("timer_init done\n");
 }
