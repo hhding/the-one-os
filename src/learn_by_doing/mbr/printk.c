@@ -1,12 +1,15 @@
 #include "stdint.h"
 #include "io.h"
 #include <stdarg.h>
+#include "sync.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
 #define CRT_CTRL_ADDR_R 0x3D4
 #define CRT_CTRL_DATA_R 0x3D5
+
+static struct lock print_lock;
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
 {
@@ -58,6 +61,7 @@ void update_cursor(uint16_t pos)
 uint32_t putchar(char c)
 {
     char* p_strdst = (char*)(0xb8000);
+    lock_acquire(&print_lock);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
     uint16_t pos = get_cursor_position();
 
@@ -81,6 +85,7 @@ uint32_t putchar(char c)
             *(p_strdst + pos * 2) = c;
             update_cursor(pos + 1);
     }
+    lock_release(&print_lock);
     return 1;
 }
                 
@@ -167,4 +172,8 @@ uint32_t printk(char* fmt, ...)
 
     va_end(arg);
     return length;
+}
+
+void console_init() {
+    lock_init(&print_lock);
 }

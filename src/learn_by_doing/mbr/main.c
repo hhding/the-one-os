@@ -21,6 +21,7 @@ void k_thread_b(void * arg) {
 
 void main()
 {
+    console_init();
     printk("\n\n");
     idt_init();
     mem_init();
