@@ -99,6 +99,29 @@ void schedule() {
     switch_to(cur, next);
 }
 
+void thread_block(enum task_status status) {
+    // 设置当前线程为 blocked 状态，然后调用 schedule 调度其他线程
+    //
+    ASSERT(status == TASK_WAITING || status == TASK_BLOCKED || status == TASK_HANGING);
+    enum intr_status old_intr_status = intr_disable();
+    struct task_struct* cur = running_thread();
+    ASSERT(cur->status == TASK_RUNNING);
+    cur->status = status;
+    schedule();
+    intr_set_status(old_intr_status);
+}
+
+void thread_unblock(struct task_struct* pthread) {
+    ASSERT(pthread->status == TASK_WAITING || pthread->status == TASK_BLOCKED || pthread->status == TASK_HANGING);
+    enum intr_status old_intr_status = intr_disable();
+    if(pthread->status != TASK_READY) { // 这行挺尴尬，对 ready 的 thread 执行 unblock 是何居心？
+        if(elem_find(&thread_ready_list, &pthread->general_tag)) PANIC("thread_unblock: blocked thread in ready list");
+        list_push(&thread_ready_list, &pthread->general_tag);
+        pthread->status = TASK_READY;
+    }
+    intr_set_status(old_intr_status);
+}
+
 void thread_init(void) {
     printk("thread_init start\n");
     list_init(&thread_ready_list);
