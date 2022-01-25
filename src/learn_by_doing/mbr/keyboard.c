@@ -34,7 +34,7 @@
 #define ctrl_r_break    0xe09d
 #define caps_lock_make  0x3a
 
-struct ioqueue kbd_buf;    // 定义键盘缓冲区
+//struct ioqueue kbd_buf;    // 定义键盘缓冲区
 
 /* 定义以下变量记录相应键是否按下的状态,
  * ext_scancode用于记录makecode是否以0xe0开头 */
@@ -107,8 +107,10 @@ static char keymap[][2] = {
 };
 
 static void keyboard_handler() {
-    int data = inb(KBD_BUF_PORT);
-    printk("got kb 0x%x\n", data);
+    uint8_t scancode = inb(KBD_BUF_PORT);
+    if(scancode == 0xe0) return;
+    if(scancode > 0x00 && scancode < 0x3b)
+        printk("%c", keymap[scancode][0]);
 }
 
 void keyboard_init() {
