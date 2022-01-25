@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "thread.h"
 #include "timer.h"
+#include "keyboard.h"
 
 void k_thread_a(void * arg) {
     char* s = arg;
@@ -27,14 +28,17 @@ void main()
     mem_init();
     thread_init();
     timer_init();
+    keyboard_init();
+    /*
     printk("starting thread 1...\n");
     thread_start("k_thread_a", 31, k_thread_a, "hello");
     printk("starting thread 2...\n");
     thread_start("k_thread_b", 8, k_thread_b, "world");
     printk("enable interrupt...\n");
+    */
     intr_enable();
 	while(1) {
-        printk("Main ");
+   //     printk("Main ");
     };
     return;
 }

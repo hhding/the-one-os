@@ -9,7 +9,7 @@
 #define PIC_S_CTRL 0xa0
 #define PIC_S_DATA 0xa1
 
-#define IDT_DESC_CNT 0x21
+#define IDT_DESC_CNT 0x2f
 
 #define EFLAGS_IF 0x00000200
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
@@ -62,17 +62,10 @@ static void pic_init(void) {
     outb (PIC_S_DATA, 0x01);
 
     // 打开从片 IR0, 就是时钟中断
-    outb (PIC_M_DATA, 0xfe);
-    outb (PIC_S_DATA, 0xff);
-    //outb (PIC_M_DATA, 0xfd);
+    //outb (PIC_M_DATA, 0xfc);
     //outb (PIC_S_DATA, 0xff);
-}
-
-void intr_handler21(void) {
-    int data;
-    data = inb(0x60);
-    printk("got kb 0x%x\n", data);
-    return;
+    outb (PIC_M_DATA, 0xfd);
+    outb (PIC_S_DATA, 0xff);
 }
 
 enum intr_status intr_enable() {
@@ -122,9 +115,9 @@ static void general_intr_handler(uint8_t vec_nr) {
     update_cursor(88);
     printk(intr_name[vec_nr]);
     if(vec_nr == 14) {  // Pagefault
-        int page_fault_vaddr = 0;
+        uint32_t page_fault_vaddr = 0;
         asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr));
-        printk("\npage fault addr is %x", page_fault_vaddr);
+        printk("\npage fault addr is 0x%x", page_fault_vaddr);
     }
     printk("\n!!!!!!!       exception message end     !!!!!!!\n");
     while(1);

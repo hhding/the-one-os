@@ -57,7 +57,7 @@ setup_page:
     loop .clear_page_dir
 
 ; 开始创建页目录项(PDE)
-.create_pde ; 创建 Page Directory Entry
+.create_pde: ; 创建 Page Directory Entry
     ; PAGE_DIR_TABLE_POS equ 0x100000 1M 开始
     mov eax, PAGE_DIR_TABLE_POS
     ; 1M + 4K => 0x101000 
