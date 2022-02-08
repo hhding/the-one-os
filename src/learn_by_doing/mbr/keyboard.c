@@ -10,7 +10,7 @@
 #define esc     '\033'   // 八进制表示字符,也可以用十六进制'\x1b'
 #define backspace   '\b'
 #define tab     '\t'
-#define enter       '\r'
+#define enter       '\n'
 #define delete      '\177'   // 八进制表示字符,十六进制为'\x7f'
 
 /* 以上不可见字符一律定义为0 */
