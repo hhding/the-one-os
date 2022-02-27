@@ -1,8 +1,6 @@
 %include "boot.inc"
 
 section loader vstart=LOADER_BASE_ADDR
-    jmp loader_start
-
     GDT_BASE:           dd  0x00000000
                         dd  0x00000000
     CODE_DESC:          dd  0x0000FFFF
@@ -21,7 +19,7 @@ section loader vstart=LOADER_BASE_ADDR
     gdt_ptr:    dw  GDT_LIMIT
                 dd  GDT_BASE
 
-    
+    times 0x300 -  ($-$$) db 0
     loader_start:
 ; ------------ 准备进入保护模式 ------------------
 ; 1 打开 A20

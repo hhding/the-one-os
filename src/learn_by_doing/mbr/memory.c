@@ -49,6 +49,11 @@ uint32_t* pde_ptr(uint32_t vaddr) {
     return pde;
 }
 
+uint32_t addr_v2p(uint32_t vaddr) {
+    uint32_t* pte = pte_ptr(vaddr);
+    return ((*pte & 0xfffff000) + (vaddr & 0x00000fff));
+}
+
 static void* palloc(struct pool* m_pool) {
     int bit_idx = bitmap_scan(&m_pool->pool_bitmap, 1);
     if(bit_idx == -1) return NULL;

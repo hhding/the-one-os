@@ -3,6 +3,7 @@
 #include "stdint.h"
 #include "thread.h"
 #include "string.h"
+#include "printk.h"
 
 struct tss {
     uint32_t backlink;
@@ -75,9 +76,9 @@ void tss_init() {
     memset(&tss, 0, tss_size);
     tss.ss0 = SELECTOR_K_STACK;
     tss.io_base = tss_size;
-    *((struct gdt_desc*)0xc0000920) = make_gdt_desc((uint32_t*)&tss, tss_size - 1，TSS_ATTR_LOW, TSS_ATTR_HIGH);
-    *((struct gdt_desc*)0xc0000928) = make_gdt_desc((uint32_t*)0, 0xfffff，GDT_CODE_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
-    *((struct gdt_desc*)0xc0000930) = make_gdt_desc((uint32_t*)0, 0xfffff，GDT_DATA_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
+    *((struct gdt_desc*)0xc0000920) = make_gdt_desc((uint32_t*)&tss, tss_size - 1, TSS_ATTR_LOW, TSS_ATTR_HIGH);
+    *((struct gdt_desc*)0xc0000928) = make_gdt_desc((uint32_t*)0, 0xfffff, GDT_CODE_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
+    *((struct gdt_desc*)0xc0000930) = make_gdt_desc((uint32_t*)0, 0xfffff, GDT_DATA_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
     uint64_t gdt_operand = (8*7-1) | ((uint64_t)(uint32_t)0xc0000900 << 16);
     asm volatile ("lgdt %0" : : "m" (gdt_operand));
     asm volatile ("ltr %w0" : : "r" (SELECTOR_TSS));

@@ -1,4 +1,5 @@
 org 0x7c00
+%include "boot.inc"
 jmp entry
 
 entry:
@@ -13,9 +14,9 @@ entry:
     mov si, msg_hello
     call putloop
 
-	mov ax, 0x0820
+	mov ax, 0
 	mov es, ax
-	mov bx, 0	; buffer address es:bx
+	mov bx, LOADER_BASE_ADDR	; buffer address es:bx
 
 	mov ch, 0	; clyinder && 0xff
 	mov dh, 0	; head
@@ -24,7 +25,7 @@ entry:
 
 	mov si, boot_msg
     call putloop
-	jmp 0x8200
+	jmp LOADER_BASE_ADDR + 0x300
 
 read_disk_loop:
 	mov ah, 0x02	; read disk

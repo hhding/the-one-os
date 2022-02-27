@@ -1,6 +1,6 @@
 ;------------------ loader and kernel
 
-LOADER_BASE_ADDR equ 0x8200
+LOADER_BASE_ADDR equ 0x900
 LOADER_START_SELECTOR equ 0x2
 
 KERNEL_BIN_BASE_ADDR equ 0x70000

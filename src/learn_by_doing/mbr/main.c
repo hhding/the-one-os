@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "timer.h"
 #include "keyboard.h"
+#include "tss.h"
 
 void k_thread_a(void * arg) {
     char* s = arg;
@@ -29,6 +30,7 @@ void main()
     thread_init();
     timer_init();
     keyboard_init();
+    tss_init();
     /*
     printk("starting thread 1...\n");
     thread_start("k_thread_a", 31, k_thread_a, "hello");

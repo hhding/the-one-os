@@ -78,5 +78,7 @@ struct gdt_desc {
 #define true 1
 #define false 0
 
+#define PAGE_SIZE 4096
+
 #endif
 

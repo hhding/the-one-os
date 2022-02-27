@@ -2,6 +2,8 @@
 #define __THREAD_THREAD_H
 #include "stdint.h"
 #include "list.h"
+#include "bitmap.h"
+#include "memory.h"
 
 // 定义了一个函数指针
 // 函数指针指向一个函数
@@ -84,8 +86,12 @@ struct task_struct {
    struct list_elem general_tag;    // 丢到某个队列里面的时候用，表示某状态
    struct list_elem all_list_tag;   // 所有进程清单，销毁了进程就没了
    uint32_t *pgdir;         // 页表虚拟地址
+   struct virtual_addr userprog_vaddr; // 用户进程的虚拟地址 
    uint32_t stack_magic;     // 用这串数字做栈的边界标记,用于检测栈的溢出
 };
+
+extern struct list thread_ready_list;
+extern struct list thread_all_list;
 
 void thread_create(struct task_struct* pthread, thread_func function, void* func_arg);
 void init_thread(struct task_struct* pthread, char* name, int prio);
