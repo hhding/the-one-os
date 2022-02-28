@@ -2,6 +2,8 @@
 #include "printk.h"
 #include "string.h"
 #include "debug.h"
+#include "thread.h"
+#include "sync.h"
 
 #define PAGE_SIZE 4096
 
@@ -17,6 +19,7 @@ struct pool {
     struct bitmap pool_bitmap;
     uint32_t phy_addr_start;
     uint32_t pool_size;
+    struct lock lock;
 };
 
 struct pool kernel_pool, user_pool;
@@ -25,15 +28,17 @@ struct virtual_addr kernel_vaddr;
 static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
     int vaddr_start = 0, bit_idx_start = -1;
     if(pf == PF_KERNEL) { 
-        bit_idx_start = bitmap_scan(&kernel_vaddr.vaddr_bitmap, pg_cnt);
-        if(bit_idx_start == -1) return NULL;
-        while(pg_cnt--) {
-            bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + pg_cnt, 1);
-        }
-        vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start * PAGE_SIZE;
+        vaddr = kernel_vaddr;
     } else {
-            // TODO
+            struct task_struct* thread = running_thread();
+            vaddr = thread->userprog_vaddr;
     }
+    bit_idx_start = bitmap_scan(&vaddr.vaddr_bitmap, pg_cnt);
+    if(bit_idx_start == -1) return NULL;
+    while(pg_cnt--) {
+        bitmap_set(&vaddr.vaddr_bitmap, bit_idx_start + pg_cnt, 1);
+    }
+    vaddr_start = vaddr.vaddr_start + bit_idx_start * PAGE_SIZE;
     return (void*)vaddr_start;
 }
 
@@ -94,10 +99,22 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
 }
 
 void* get_kernel_pages(uint32_t pg_cnt) {
+    lock_acquire(@kernel_pool.lock);
     void* vaddr = malloc_page(PF_KERNEL, pg_cnt);
     if(vaddr != NULL) {
         memset(vaddr, 0, pg_cnt * PAGE_SIZE);
     }
+    lock_release(&kernel_pool.lock);
+    return vaddr;
+}
+
+void* get_user_pages(uint32_t pg_cnt) {
+    lock_acquire(@user_pool.lock);
+    void* vaddr = malloc_page(PF_USER, pg_cnt);
+    if(vaddr != NULL) {
+        memset(vaddr, 0, pg_cnt * PAGE_SIZE);
+    }
+    lock_release(&user_pool.lock);
     return vaddr;
 }
 
