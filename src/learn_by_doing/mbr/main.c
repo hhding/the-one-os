@@ -6,6 +6,9 @@
 #include "timer.h"
 #include "keyboard.h"
 #include "tss.h"
+#include "process.h"
+
+int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
     char* s = arg;
@@ -21,6 +24,20 @@ void k_thread_b(void * arg) {
     }
 }
 
+/* 测试用户进程 */
+void u_prog_a(void) {
+   while(1) {
+      test_var_a++;
+   }
+}
+
+/* 测试用户进程 */
+void u_prog_b(void) {
+   while(1) {
+      test_var_b++;
+   }
+}
+
 void main()
 {
     console_init();
@@ -31,14 +48,12 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
-    /*
-    printk("starting thread 1...\n");
+    process_execute(u_prog_a, "user_prog_a");
+    process_execute(u_prog_b, "user_prog_b");
     thread_start("k_thread_a", 31, k_thread_a, "hello");
-    printk("starting thread 2...\n");
     thread_start("k_thread_b", 8, k_thread_b, "world");
-    printk("enable interrupt...\n");
-    */
     intr_enable();
+
 	while(1) {
    //     printk("Main ");
     };

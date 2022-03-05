@@ -26,19 +26,20 @@ struct pool kernel_pool, user_pool;
 struct virtual_addr kernel_vaddr;
 
 static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
+    struct virtual_addr* vaddr = NULL;
     int vaddr_start = 0, bit_idx_start = -1;
     if(pf == PF_KERNEL) { 
-        vaddr = kernel_vaddr;
+        vaddr = &kernel_vaddr;
     } else {
             struct task_struct* thread = running_thread();
-            vaddr = thread->userprog_vaddr;
+            vaddr = &thread->userprog_vaddr;
     }
-    bit_idx_start = bitmap_scan(&vaddr.vaddr_bitmap, pg_cnt);
+    bit_idx_start = bitmap_scan(&vaddr->vaddr_bitmap, pg_cnt);
     if(bit_idx_start == -1) return NULL;
     while(pg_cnt--) {
-        bitmap_set(&vaddr.vaddr_bitmap, bit_idx_start + pg_cnt, 1);
+        bitmap_set(&vaddr->vaddr_bitmap, bit_idx_start + pg_cnt, 1);
     }
-    vaddr_start = vaddr.vaddr_start + bit_idx_start * PAGE_SIZE;
+    vaddr_start = vaddr->vaddr_start + bit_idx_start * PAGE_SIZE;
     return (void*)vaddr_start;
 }
 
@@ -99,7 +100,7 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
 }
 
 void* get_kernel_pages(uint32_t pg_cnt) {
-    lock_acquire(@kernel_pool.lock);
+    lock_acquire(&kernel_pool.lock);
     void* vaddr = malloc_page(PF_KERNEL, pg_cnt);
     if(vaddr != NULL) {
         memset(vaddr, 0, pg_cnt * PAGE_SIZE);
@@ -109,13 +110,16 @@ void* get_kernel_pages(uint32_t pg_cnt) {
 }
 
 void* get_user_pages(uint32_t pg_cnt) {
-    lock_acquire(@user_pool.lock);
+    lock_acquire(&user_pool.lock);
     void* vaddr = malloc_page(PF_USER, pg_cnt);
     if(vaddr != NULL) {
         memset(vaddr, 0, pg_cnt * PAGE_SIZE);
     }
     lock_release(&user_pool.lock);
     return vaddr;
+}
+
+void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
 }
 
 static void mem_pool_init(uint32_t all_mem) {
