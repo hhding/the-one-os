@@ -120,6 +120,37 @@ void* get_user_pages(uint32_t pg_cnt) {
 }
 
 void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
+    struct pool* mem_pool = (pf & PF_KERNEL ? &kernel_pool : &user_pool);
+    struct virtual_addr* thread_vaddr = NULL;
+
+    lock_acquire(&mem_pool->lock);
+    struct task_struct* cur = running_thread();
+
+    if(cur->pgdir != NULL && pf == PF_USER) {
+        thread_vaddr = &cur->userprog_vaddr;
+    } else if(cur->pgdir == NULL && pf == PF_KERNEL) {
+        thread_vaddr = &kernel_vaddr;
+    } else {
+        PANIC("get_a_page:not allow kernel alloc userspace or user alloc kernelspace by get_a_page");
+    }
+
+    void* page_phyaddr = palloc(mem_pool);
+    if(page_phyaddr == NULL) goto get_a_page_fail;
+
+    uint32_t idx = -1;
+    idx = (vaddr - thread_vaddr->vaddr_start) / PAGE_SIZE;
+    ASSERT(idx > 0);
+    bitmap_set(&thread_vaddr->vaddr_bitmap, idx, 1);
+    page_table_add((void*)vaddr, page_phyaddr);
+    lock_release(&mem_pool->lock);
+
+    return (void*)vaddr;
+
+get_a_page_fail:
+    lock_release(&mem_pool->lock);
+    PANIC("get_a_page fail");
+    return NULL;
+
 }
 
 static void mem_pool_init(uint32_t all_mem) {
@@ -153,6 +184,8 @@ static void mem_pool_init(uint32_t all_mem) {
     bitmap_init(&user_pool.pool_bitmap);
     bitmap_init(&kernel_pool.pool_bitmap);
     bitmap_init(&kernel_vaddr.vaddr_bitmap);
+    lock_init(&kernel_pool.lock);
+    lock_init(&user_pool.lock);
     printk("    mem_pool_init done\n");
 }
 
