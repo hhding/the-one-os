@@ -9,7 +9,7 @@
 #define CRT_CTRL_ADDR_R 0x3D4
 #define CRT_CTRL_DATA_R 0x3D5
 
-#define VGA_ADDR 0xb8000
+#define VGA_ADDR 0xc00b8000
 
 static struct lock print_lock;
 
