@@ -9,6 +9,8 @@
 #define CRT_CTRL_ADDR_R 0x3D4
 #define CRT_CTRL_DATA_R 0x3D5
 
+#define VGA_ADDR 0xb8000
+
 static struct lock print_lock;
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
@@ -39,7 +41,7 @@ uint16_t get_cursor_position(void)
 void update_cursor(uint16_t pos)
 {
     // 处理滚屏的问题
-    char* p_strdst = (char*)(0xb8000);
+    char* p_strdst = (char*)(VGA_ADDR);
     if(pos >= 2000) {
         for(int i = 0; i < pos; i++) {
             *(p_strdst + i * 2) = *(p_strdst + i *2 + 80*2);
@@ -60,7 +62,7 @@ void update_cursor(uint16_t pos)
 
 uint32_t putchar(char c)
 {
-    char* p_strdst = (char*)(0xb8000);
+    char* p_strdst = (char*)(VGA_ADDR);
     lock_acquire(&print_lock);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
     uint16_t pos = get_cursor_position();

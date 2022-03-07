@@ -63,7 +63,6 @@ void page_dir_activate(struct task_struct* p_thread) {
     if (p_thread->pgdir != NULL) 
         phy_addr = addr_v2p((uint32_t)p_thread->pgdir);
 
-    ASSERT(phy_addr == 0x100000);
     asm volatile ("movl %0, %%cr3" : : "r" (phy_addr) : "memory");
 }
 
