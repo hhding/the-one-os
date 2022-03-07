@@ -48,8 +48,8 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
-    /*
     process_execute(u_prog_a, "user_prog_a");
+    /*
     process_execute(u_prog_b, "user_prog_b");
     */
     thread_start("k_thread_a", 31, k_thread_a, "hello");
