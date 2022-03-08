@@ -121,9 +121,9 @@ void* get_user_pages(uint32_t pg_cnt) {
 
 void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
     struct pool* mem_pool = (pf & PF_KERNEL ? &kernel_pool : &user_pool);
+    lock_acquire(&mem_pool->lock);
     struct virtual_addr* thread_vaddr = NULL;
 
-    lock_acquire(&mem_pool->lock);
     struct task_struct* cur = running_thread();
 
     if(cur->pgdir != NULL && pf == PF_USER) {

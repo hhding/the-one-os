@@ -98,6 +98,7 @@ void schedule() {
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
     next->status = TASK_RUNNING;
     process_activate(next);
+    printk("sched: %s => %s\n", cur->name, next->name);
     switch_to(cur, next);
 }
 
