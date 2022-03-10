@@ -177,13 +177,15 @@ static void mem_pool_init(uint32_t all_mem) {
     user_pool.pool_bitmap.btmap_bytes_len = ubm_length;
     printk("        user: phy_addr_start: 0x%x pool_size: %d kbytes\n", up_start, user_pool.pool_size/1024);
 
+    // user vaddr 各在各自的 pgdir 维护，所以这里没有这部分代码
+    // 初始化 kernel vaddr 及其 bitmap
     kernel_vaddr.vaddr_start = K_HEEP_START;
     kernel_vaddr.vaddr_bitmap.btmap_bytes_len = kbm_length;
     kernel_vaddr.vaddr_bitmap.bits =  (void*)(MEMORY_BITMAP_BASE + kbm_length + ubm_length);
-
     bitmap_init(&user_pool.pool_bitmap);
     bitmap_init(&kernel_pool.pool_bitmap);
     bitmap_init(&kernel_vaddr.vaddr_bitmap);
+
     lock_init(&kernel_pool.lock);
     lock_init(&user_pool.lock);
     printk("    mem_pool_init done\n");

@@ -25,14 +25,14 @@ void k_thread_b(void * arg) {
 }
 
 /* 测试用户进程 */
-void u_prog_a(void) {
+void __attribute__((optimize("O0"))) u_prog_a(void) {
    while(1) {
       test_var_a++;
    }
 }
 
 /* 测试用户进程 */
-void u_prog_b(void) {
+void __attribute__((optimize("O0"))) u_prog_b(void) {
    while(1) {
       test_var_b++;
    }
@@ -49,15 +49,13 @@ void main()
     keyboard_init();
     tss_init();
     process_execute(u_prog_a, "user_prog_a");
-    /*
     process_execute(u_prog_b, "user_prog_b");
-    */
     thread_start("k_thread_a", 31, k_thread_a, "hello");
     thread_start("k_thread_b", 8, k_thread_b, "world");
     intr_enable();
 
 	while(1) {
-        printk("Main ");
+    //    printk("Main ");
     };
     return;
 }

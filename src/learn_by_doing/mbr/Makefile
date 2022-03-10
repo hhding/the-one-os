@@ -21,6 +21,7 @@ bin: mbr.bin loader.bin kernel.bin
 	@dd if=mbr.bin of=/mnt/d/mbr bs=512 seek=0 conv=notrunc
 	@dd if=loader.bin of=/mnt/d/mbr bs=512 seek=1 conv=notrunc
 	@dd if=kernel.bin of=/mnt/d/mbr bs=512 seek=9 conv=notrunc
+	@nm kernel.bin | cut -d' ' -f1,3 > /mnt/d/utils/sym.dat
 
 kernel.bin: $(objfiles)
 	$(LD) $(LDFLAGS) -o $@ $(objfiles)

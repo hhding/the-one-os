@@ -38,6 +38,7 @@ void thread_create(struct task_struct* pthread, thread_func func, void* func_arg
     kthread_stack->eip = kernel_thread;
     kthread_stack->function = func;
     kthread_stack->func_arg = func_arg;
+    printk("thread_create(%s): eip: 0x%x, func: 0x%x, arg: %x\n", pthread->name, (uint32_t)kernel_thread, (uint32_t)func, (uint32_t)func_arg);
     kthread_stack->ebp = kthread_stack->ebx = kthread_stack->esi = kthread_stack->edi = 0;
 }
 
@@ -98,6 +99,7 @@ void schedule() {
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
     next->status = TASK_RUNNING;
     process_activate(next);
+    // printk("schedule: switch to: %s to %s\n", cur->name, next->name);
     switch_to(cur, next);
 }
 
