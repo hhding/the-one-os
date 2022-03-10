@@ -17,7 +17,6 @@ switch_to:
     push ebp
     mov eax, [esp + 20]
     mov [eax], esp      ; 把压栈后堆栈的 esp 地址存到 cur 第一个位置
-
     mov eax, [esp + 24]
     mov esp, [eax]      ; 跟上面的相反，把 next 上存的 esp 恢复过来，然后开始 pop 恢复寄存器
     pop ebp

@@ -13,14 +13,14 @@ int test_var_a = 0, test_var_b = 0;
 void k_thread_a(void * arg) {
     char* s = arg;
     while(1) {
-        printk("%s %d ", s, test_var_a);
+    //    printk("%s %d ", s, test_var_a);
     }
 }
 
 void k_thread_b(void * arg) {
     char* s = arg;
     while(1) {
-        printk("%s %d ", s, test_var_b);
+    //    printk("%s %d ", s, test_var_b);
     }
 }
 
@@ -48,10 +48,12 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
+    // Page Fault
+    //*(char*)(0xb00000) = '1';
     process_execute(u_prog_a, "user_prog_a");
     process_execute(u_prog_b, "user_prog_b");
     thread_start("k_thread_a", 31, k_thread_a, "hello");
-    thread_start("k_thread_b", 8, k_thread_b, "world");
+    thread_start("k_thread_b", 31, k_thread_b, "world");
     intr_enable();
 
 	while(1) {

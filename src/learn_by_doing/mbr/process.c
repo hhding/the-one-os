@@ -77,6 +77,7 @@ uint32_t* create_page_dir(void) {
     // 拷贝页目录（高1GB地址空间，共256个项，每个项要4个字节，共1024字节）
     // memcpy(dst, src, size)
     memcpy((uint32_t*)((uint32_t)page_dir_vaddr + 768*4), (uint32_t*)(0xfffff000 + 768 * 4), 1024);
+    memcpy((uint32_t*)((uint32_t)page_dir_vaddr), (uint32_t*)(0xfffff000), 4);
     // 拷过来的页目录，其中最后一项应该改成指向其自己
     uint32_t phy_addr = addr_v2p((uint32_t)page_dir_vaddr);
     printk("create_page_dir<phy_addr>: %x\n", (uint32_t)phy_addr);
