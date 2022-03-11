@@ -13,14 +13,14 @@ int test_var_a = 0, test_var_b = 0;
 void k_thread_a(void * arg) {
     char* s = arg;
     while(1) {
-    //    printk("%s %d ", s, test_var_a);
+        printk("%s %d ", s, test_var_a);
     }
 }
 
 void k_thread_b(void * arg) {
     char* s = arg;
     while(1) {
-    //    printk("%s %d ", s, test_var_b);
+        printk("%s %d ", s, test_var_b);
     }
 }
 
