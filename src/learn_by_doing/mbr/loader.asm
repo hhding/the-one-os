@@ -257,11 +257,14 @@ rd_disk_m_32:
     jnz .not_ready
 
 ; 第五步：从 0x1f0 端口读取数据
+; ECX -> DI 是前面传进来要读多少扇区
     mov ax, di
     mov dx, 256
-    mul dx
-    mov cx, ax
+    mul dx ; 每个扇区512字节，每次读取一个字（2个字节），所以只要 256 就可以了。
+            ; 计算结果存在 EDX:EAX 上，EAX 应该为0xc800，后面应该是 ECX 的值
+
     mov dx, 0x1f0
+    mov cx, ax
 .go_on_read:
     in ax, dx
     mov [ebx], ax
