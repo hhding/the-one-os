@@ -32,6 +32,7 @@ section loader vstart=LOADER_BASE_ADDR
     out 0x92, al
 
     ; ------------- 加载 gdt ------------------
+    cli
     lgdt [gdt_ptr]
 
     ; ------------- cr0 第 0 位置 1 -----------
@@ -131,9 +132,9 @@ p_mode_start:
     mov cr0, eax
     lgdt [gdt_ptr]
 
-    mov eax, KERNEL_START_SECTOR
-    mov ebx, KERNEL_BIN_BASE_ADDR
-    mov ecx, 200
+    mov ebx, KERNEL_START_SECTOR    ; 0x9
+    mov edi, KERNEL_BIN_BASE_ADDR   ; 0x70000，后面 insw 要用，直接一步到位
+    mov eax, 200
     call rd_disk_m_32
     
     jmp SELECTOR_CODE:enter_kernel
@@ -203,38 +204,33 @@ mem_cpy:
 ; --------------------------------------------------------
 ; 功能：读取硬盘 n 个扇区
 rd_disk_m_32:
-; eax = lba 扇区号
-; ebx = 将数据写入的内存地址
-; ecx = 读入的扇区数
+; ebx = lba 扇区号
+; edi = 将数据写入的内存地址
+; eax = 读入的扇区数
 ; --------------------------------------------------------
-    mov esi, eax    ; backup eax
-    mov di, cx      ; backup cx
-
 ; 读写硬盘
 ; 第一步：设置要读取的扇区数
     mov dx, 0x1f2
-    mov al, cl
     out dx, al  ; 读取的扇区数
 
-    mov eax, esi    ; 恢复 ax
-
 ; 第二步：将 lba 地址存入 0x1f3 - 0x1f6
+    push eax    ; 后续 out 依赖 al，先存起来。
+    mov eax, ebx
     ; lba 地址7-0位写入端口 0x1f3
     mov dx, 0x1f3
     out dx, al
-
+    
     ; lba 地址15-8位写入端口 0x1f4
+    shr eax, 8 ; 右移8位，中间8位变成低8位
     mov dx, 0x1f4
-    mov cl, 8   ; cl 前面用完了，这里可以直接用
-    shr eax, cl ; 右移8位，中间8位变成低8位
     out dx, al
 
     ; lba 地址23-16位写入端口 0x1f5
-    shr eax, cl
+    shr eax, 8
     mov dx, 0x1f5
     out dx, al
 
-    shr eax, cl
+    shr eax, 8
     and al, 0x0f    ; 这里只需要低4位, lba 地址 24-27 位
     or al, 0xe0     ; 7-4位设置为 1110，表示 lba 模式
     mov dx, 0x1f6
@@ -244,31 +240,27 @@ rd_disk_m_32:
     mov dx, 0x1f7
     mov al, 0x20
     out dx, al
+    pop ebx ; 现在 ebx 是扇区数，eax 留给后面的代码用
 
 ; 第四步：检测硬盘专题
-
-.not_ready:
-    ; 同一个端口 0x1f7
-    nop
+; edi, eax 不能用，其他的都可以
+.read_sector:
+; 先看一下是不是就绪，然后再开始读取
+; 每次读完一个扇区（512字节）都要检测一下数据是否就绪。
+.still_going:
+    mov dx, 0x1F7
     in al, dx
-    and al, 0x88    ; 第三位为1表示硬盘控制器已经准备好数据传输
-                    ; 第七位位1表示硬盘忙
-    cmp al, 0x08
-    jnz .not_ready
+    test al, 8           ; the sector buffer requires servicing.
+    jz .still_going      ; until the sector buffer is ready.
 
-; 第五步：从 0x1f0 端口读取数据
-; ECX -> DI 是前面传进来要读多少扇区
-    mov ax, di
-    mov dx, 256
-    mul dx ; 每个扇区512字节，每次读取一个字（2个字节），所以只要 256 就可以了。
-            ; 计算结果存在 EDX:EAX 上，EAX 应该为0xc800，后面应该是 ECX 的值
+    mov ecx, 256         ; RCX is counter for INSW
+    mov edx, 0x1F0       ; Data port, in and out
+    rep insw             ; in to [RDI]
 
-    mov dx, 0x1f0
-    mov cx, ax
-.go_on_read:
-    in ax, dx
-    mov [ebx], ax
-    add ebx, 2
-    loop .go_on_read
+    dec bl
+    cmp bl, 0
+    jne .read_sector
+                         ; 从 EDX 读取数据，读到 ES:EDI 的位置
+                         ; rep 总共读取 ECX 次, cld 确定读取方向
     ret
 
