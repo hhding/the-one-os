@@ -87,6 +87,7 @@ struct task_struct {
    struct list_elem all_list_tag;   // 所有进程清单，销毁了进程就没了
    uint32_t *pgdir;         // 页表虚拟地址
    struct virtual_addr userprog_vaddr;  //用户进程的虚拟地址
+   uint32_t pid;
    uint32_t stack_magic;     // 用这串数字做栈的边界标记,用于检测栈的溢出
 };
 
@@ -101,5 +102,7 @@ void schedule(void);
 void thread_init(void);
 void thread_block(enum task_status status);
 void thread_unblock(struct task_struct* pthread);
+uint32_t allocate_pid(void);
+uint32_t getpid(void);
 #endif
 

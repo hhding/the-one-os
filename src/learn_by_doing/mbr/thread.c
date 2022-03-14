@@ -21,8 +21,14 @@ struct task_struct* main_thread;
 struct list thread_ready_list;
 struct list thread_all_list;
 static struct list_elem* thread_tag;
+static uint32_t pid = 0;
 
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
+
+uint32_t allocate_pid() {
+    pid ++;
+    return pid;
+}
 
 struct task_struct* running_thread() {
     uint32_t esp;
@@ -50,6 +56,7 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
     pthread->elapsed_ticks = 0;
     pthread->status = TASK_READY;
     pthread->pgdir = NULL;
+    pthread->pid = allocate_pid();
     pthread->stack_magic = 20220120;
     pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PAGE_SIZE);
 }
@@ -66,6 +73,11 @@ struct task_struct* thread_start(char* name, int prio, thread_func func, void* f
     list_append(&thread_ready_list, &thread->general_tag);
 
     return thread;
+}
+
+uint32_t getpid(void) {
+    task_struct cur = running_thread();
+    return cur->pid;
 }
 
 static void make_main_thread(void) {
