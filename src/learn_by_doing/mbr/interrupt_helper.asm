@@ -3,6 +3,7 @@
 %define ZERO push 0		 ; 若在相关的异常中cpu没有压入错误码,为了统一栈中格式,就手工压入一个0
 
 extern idt_table		 ;idt_table是C中注册的中断处理程序数组
+extern syscall_table
 
 section .data
 global intr_entry_table
@@ -10,6 +11,7 @@ intr_entry_table:
 
 %macro VECTOR 2
 section .text
+    
 intr%1entry:		 ; 每个中断处理程序都要压入中断向量号,所以一个中断类型一个中断处理程序，自己知道自己的中断向量号是多少
 
    %2				 ; 中断若有错误码会压在eip后面 
@@ -34,6 +36,23 @@ section .data
 %endmacro
 
 section .text
+global syscall_handler
+syscall_handler:
+   push 0
+   push ds
+   push es
+   push fs
+   push gs
+   pushad			 ; PUSHAD指令压入32位寄存器,其入栈顺序是: EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI
+   push 0x80
+   push edx
+   push ecx
+   push ebx
+   call [syscall_table + eax*4]
+   add esp, 12
+   mov [esp + 8*4], eax
+   jmp intr_exit
+
 global intr_exit
 intr_exit:	     
 ; 以下是恢复上下文环境

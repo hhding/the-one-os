@@ -9,16 +9,18 @@
 #define PIC_S_CTRL 0xa0
 #define PIC_S_DATA 0xa1
 
-#define IDT_DESC_CNT 81
+#define IDT_DESC_CNT 0x81
 
 #define EFLAGS_IF 0x00000200
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
 
-extern intr_handler intr_entry_table[IDT_DESC_CNT];     // 声明引用定义在ke
+extern intr_handler intr_entry_table[IDT_DESC_CNT];     // 声明引用定义 interrupt_helper.asm
+extern intr_handler syscall_handler[10];     // 声明引用定义 interrupt_helper.asm
 
 char* intr_name[IDT_DESC_CNT];           // 用于保存异常的名字
 intr_handler asm_intr21_entry(void);
-intr_handler idt_table[IDT_DESC_CNT];        // 定义中断处理程序数组.在kern
+intr_handler idt_table[IDT_DESC_CNT];        // 定义中断处理程序数组.
+intr_handler syscall_table[10];        // 定义中断处理程序数组.
 
 struct gate_desc {
     uint16_t func_offset_low_word;
@@ -41,11 +43,10 @@ static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler 
 }
 
 static void idt_desc_init(void) {
-    int i = 0;
-    for ( i = 0; i < IDT_DESC_CNT; i++ ) {
+    for (int i = 0; i < IDT_DESC_CNT; i++ ) {
         make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
     }
-    // make_idt_desc(&idt[0x21], IDT_DESC_ATTR_DPL0, asm_intr21_entry);
+    make_idt_desc(&idt[0x80], IDT_DESC_ATTR_DPL3, syscall_handler);
 }
 
 static void pic_init(void) {
@@ -149,7 +150,7 @@ static void exception_init(void) {
    intr_name[17] = "#AC Alignment Check Exception";
    intr_name[18] = "#MC Machine-Check Exception";
    intr_name[19] = "#XF SIMD Floating-Point Exception";
-   intr_name[80] = "Syscall for OS";
+   intr_name[0x80] = "Syscall for OS";
 }
 
 void idt_init() {
@@ -166,5 +167,9 @@ void idt_init() {
 
 void register_handler(uint8_t vector_no, intr_handler func) {
     idt_table[vector_no] = func;
+}
+
+void register_syscall(uint8_t syscall_nr, intr_handler func) {
+    syscall_table[syscall_nr] = func;
 }
 

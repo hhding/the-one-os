@@ -75,11 +75,6 @@ struct task_struct* thread_start(char* name, int prio, thread_func func, void* f
     return thread;
 }
 
-uint32_t getpid(void) {
-    task_struct cur = running_thread();
-    return cur->pid;
-}
-
 static void make_main_thread(void) {
     main_thread = running_thread();
     init_thread(main_thread, "main", 31);
@@ -136,6 +131,11 @@ void thread_unblock(struct task_struct* pthread) {
         pthread->status = TASK_READY;
     }
     intr_set_status(old_intr_status);
+}
+
+uint32_t syscall_getpid(void) {
+    struct task_struct * cur = running_thread();
+    return cur->pid;
 }
 
 void thread_init(void) {
