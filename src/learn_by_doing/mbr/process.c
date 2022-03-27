@@ -69,7 +69,7 @@ void page_dir_activate(struct task_struct* p_thread) {
 
 uint32_t* create_page_dir(void) {
     uint32_t* page_dir_vaddr = get_kernel_pages(1);
-    printk("create_page_dir<page_dir_vaddr>: %x\n", (uint32_t)page_dir_vaddr);
+    // printk("create_page_dir<page_dir_vaddr>: %x\n", (uint32_t)page_dir_vaddr);
     ASSERT(page_dir_vaddr != NULL);
     if (page_dir_vaddr == NULL) {
         PANIC("create_page_dir: get_kernel_page falied!");
@@ -80,7 +80,7 @@ uint32_t* create_page_dir(void) {
     memcpy((uint32_t*)((uint32_t)page_dir_vaddr), (uint32_t*)(0xfffff000), 4);
     // 拷过来的页目录，其中最后一项应该改成指向其自己
     uint32_t phy_addr = addr_v2p((uint32_t)page_dir_vaddr);
-    printk("create_page_dir<phy_addr>: %x\n", (uint32_t)phy_addr);
+    // printk("create_page_dir<phy_addr>: %x\n", (uint32_t)phy_addr);
     page_dir_vaddr[1023] = phy_addr | PG_US_U | PG_RW_W | PG_P_1;
     return page_dir_vaddr;
 }
@@ -93,7 +93,8 @@ void process_execute(void* filename, char* name) {
     thread_create(thread, start_process, filename);
     // 这里就要创建进程用的页表，包括页目录和页表
     thread->pgdir = create_page_dir();
-    printk("pgdir %s: %x\n", name, (uint32_t)thread->pgdir);
+    block_desc_init(thread->u_block_desc);
+    //printk("pgdir %s: %x\n", name, (uint32_t)thread->pgdir);
 
     enum intr_status old_status = intr_disable();
     ASSERT(!elem_find(&thread_ready_list, &thread->general_tag));

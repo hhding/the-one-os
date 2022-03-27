@@ -2,6 +2,7 @@
 #define __KERNEL_MEMORY_H
 #include "stdint.h"
 #include "bitmap.h"
+#include "list.h"
 
 enum pool_flags {
     PF_KERNEL = 1,
@@ -20,6 +21,25 @@ struct virtual_addr {
     uint32_t vaddr_start;
 };
 
+// 这个结构体指向具体的内存块地址
+struct mem_block {
+    struct list_elem free_elem;
+};
+
+struct mem_block_desc {
+    uint32_t block_size;
+    uint32_t block_per_arena;
+    struct list free_list;
+};
+
+struct arena {
+    struct mem_block_desc* desc;
+    uint32_t cnt;
+    bool large;
+};
+
+#define DESC_CNT 7
+
 extern struct pool kernel_pool, user_pool;
 void mem_init(void);
 void* get_kernel_pages(uint32_t pg_cnt);
@@ -30,4 +50,8 @@ uint32_t* pde_ptr(uint32_t vaddr);
 uint32_t addr_v2p(uint32_t vaddr);
 void* get_a_page(enum pool_flags pf, uint32_t vaddr);
 void* get_user_pages(uint32_t pg_cnt);
+void* syscall_malloc(uint32_t size);
+void pfree(uint32_t pg_phy_addr);
+void syscall_free(void* ptr);
+void block_desc_init(struct mem_block_desc* desc_arry);
 #endif

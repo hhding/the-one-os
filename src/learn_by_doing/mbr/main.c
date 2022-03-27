@@ -12,24 +12,20 @@
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
-    char* s = arg;
-    while(1) {
-        //printk("%s %d prog_a %d", s, getpid(), test_var_a);
-    }
+    char * p = malloc(63);
+    printk("k_thread_a: 0x%x\n", (uint32_t)p);
+    while(1);
 }
 
 void k_thread_b(void * arg) {
-    char* s = arg;
-    while(1) {
-        //printk("%s %d prog_b: %d", s, getpid(), test_var_b);
-    }
+    while(1);
 }
 
 /* 测试用户进程 */
 void __attribute__((optimize("O0"))) u_prog_a(void) {
    while(1) {
       test_var_a = getpid();
-      write("syscall write u_prog_a");
+      //write("syscall write u_prog_a");
    }
 }
 
@@ -37,7 +33,7 @@ void __attribute__((optimize("O0"))) u_prog_a(void) {
 void __attribute__((optimize("O0"))) u_prog_b(void) {
    while(1) {
       test_var_b = getpid();
-      write("syscall write u_prog_b");
+      //write("syscall write u_prog_b");
    }
 }
 
