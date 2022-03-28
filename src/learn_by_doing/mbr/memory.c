@@ -194,7 +194,7 @@ static void mem_pool_init(uint32_t all_mem) {
 }
 
 struct mem_block* arena2block(struct arena* a, uint32_t idx) {
-    return (struct mem_block*)((uint32_t)(a+1) + idx*a->desc->block_size * idx);
+    return (struct mem_block*)((uint32_t)(a+1) + a->desc->block_size * idx);
 }
 
 struct arena* block2arena(struct mem_block* b) {
