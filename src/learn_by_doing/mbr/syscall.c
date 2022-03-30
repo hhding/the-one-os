@@ -23,7 +23,7 @@ void free(void* ptr) {
 void init_syscall() {
     printk("syscall init start\n");
     register_syscall(SYS_getpid, syscall_getpid);
-    register_syscall(SYS_write, puts);
+    register_syscall(SYS_write, syscall_write);
     register_syscall(SYS_malloc, syscall_malloc);
     register_syscall(SYS_free, syscall_free);
     printk("syscall init done\n");

@@ -8,12 +8,17 @@
 #include "tss.h"
 #include "process.h"
 #include "syscall.h"
+#include "stdio.h"
 
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
-    char * p = malloc(63);
-    printk("k_thread_a: 0x%x\n", (uint32_t)p);
+    char* p1 = malloc(63);
+    char* p2 = malloc(12);
+    printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p2);
+    free(p2);
+    char* p3 = malloc(60);
+    printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p3);
     while(1);
 }
 
@@ -23,18 +28,18 @@ void k_thread_b(void * arg) {
 
 /* 测试用户进程 */
 void __attribute__((optimize("O0"))) u_prog_a(void) {
-   while(1) {
-      test_var_a = getpid();
-      //write("syscall write u_prog_a");
-   }
+    char* p1 = malloc(63);
+    char* p2 = malloc(12);
+    free(p2);
+    printf("u_prog_a: p1<0x%x>\n", (uint32_t)p1);
+    while(1);
 }
 
 /* 测试用户进程 */
 void __attribute__((optimize("O0"))) u_prog_b(void) {
-   while(1) {
-      test_var_b = getpid();
-      //write("syscall write u_prog_b");
-   }
+    test_var_b = getpid();
+    printf("u_prog_b: pid<%d>\n", test_var_b);
+    while(1);
 }
 
 void main()

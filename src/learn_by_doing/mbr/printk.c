@@ -1,7 +1,7 @@
 #include "stdint.h"
 #include "io.h"
-#include <stdarg.h>
 #include "sync.h"
+#include "stdio.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -60,7 +60,7 @@ void update_cursor(uint16_t pos)
 	outb(CRT_CTRL_DATA_R, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-uint32_t putchar(char c)
+uint32_t _putchar(char c)
 {
     char* p_strdst = (char*)(VGA_ADDR);
     lock_acquire(&print_lock);
@@ -91,49 +91,17 @@ uint32_t putchar(char c)
     return 1;
 }
                 
-
-uint32_t puts(char *s) {
+uint32_t syscall_write(char *s) {
     char c;
     int length = 0;
     while ((c = *s++)) {
-        putchar(c);
+        _putchar(c);
         length ++;
     }
     return length;
 }
 
-void itoa(uint32_t value, char* buffer, int scale) {
-    char * p = buffer;
-    char * p_s;
-    uint32_t tmp_int = value;
-    char c;
-    uint32_t i2c;
-
-    /*
-    if(value < 0) {
-        *p++ = '-';
-        tmp_int = (unsigned long)(-(long)value);
-    }
-    */
-    p_s = p;
-
-    do {
-        i2c = tmp_int % scale; 
-        *p++ = i2c >=10? i2c - 10 + 'a': i2c + '0';
-        tmp_int /= scale;
-    } while (tmp_int > 0);
-    *p-- = '\0';
-
-    do {
-        c = *p;
-        *p-- = *p_s;
-        *p_s++ = c;
-    } while(p > p_s);
-}
-
-
-uint32_t printk(char* fmt, ...)
-{
+uint32_t printk(char* fmt, ...) {
     uint32_t int_temp;
     char ch;
     char char_temp;
@@ -141,35 +109,34 @@ uint32_t printk(char* fmt, ...)
     char *string_temp;
     va_list arg;
     uint32_t length = 0;
-
     va_start(arg, fmt);
 
     while (( ch = *fmt++ )) {
         if ('%' == ch) {
             switch ((ch = *fmt++)) {
                 case '%':
-                    length += putchar('%');
+                    length += _putchar('%');
                     break;
                 case 'c':
                     char_temp = va_arg(arg, int);
-                    length += putchar(char_temp);
+                    length += _putchar(char_temp);
                     break;
                 case 's':
                     string_temp = va_arg(arg, char *);
-                    length += puts(string_temp);
+                    length += syscall_write(string_temp);
                     break;
                 case 'd':
                     int_temp = va_arg(arg, int);
                     itoa(int_temp, buffer, 10);
-                    length += puts(buffer);
+                    length += syscall_write(buffer);
                     break;
                 case 'x':
                     int_temp = va_arg(arg, int);
                     itoa(int_temp, buffer, 16);
-                    length += puts(buffer);
+                    length += syscall_write(buffer);
                     break;
             }
-        } else { length += putchar(ch); }
+        } else { length += _putchar(ch); }
     }
 
     va_end(arg);

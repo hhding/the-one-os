@@ -309,7 +309,7 @@ void page_table_pte_remove(uint32_t vaddr) {
 void mfree_page(enum pool_flags pf, void* _vaddr, uint32_t cnt) {
     uint32_t pg_phy_addr;
     uint32_t vaddr = (uint32_t)_vaddr;
-    ASSERT(cnt > 1 && vaddr % PAGE_SIZE == 0);
+    ASSERT(cnt >= 1 && vaddr % PAGE_SIZE == 0);
     pg_phy_addr = addr_v2p(vaddr);
     ASSERT((pg_phy_addr % PAGE_SIZE) == 0 && pg_phy_addr >= 0x102000);
 
@@ -343,8 +343,7 @@ void syscall_free(void* ptr) {
     } else {
         list_append(&a->desc->free_list, &b->free_elem);
         if(++a->cnt == a->desc->block_per_arena) {
-            uint32_t i = 0;
-            while(i < a->desc->block_per_arena) {
+            for(uint32_t i = 0; i < a->desc->block_per_arena; i++) {
                 b = arena2block(a, i);
                 ASSERT(elem_find(&a->desc->free_list, &b->free_elem));
                 list_remove(&b->free_elem);
