@@ -8,40 +8,21 @@ uint32_t puts(char *s) {
     return syscall_write(s);
 }
 
-int itoa(uint32_t value, char* buffer, int scale) {
-    char * p = buffer;
-    char * p_s;
-    uint32_t tmp_int = value;
-    char c;
-    uint32_t i2c;
+void itoa(uint32_t value, char** ptr2buf_ptr, int base) {
+    uint32_t m = value % base;
+    uint32_t v = value / base;
 
-    /*
-    if(value < 0) {
-        *p++ = '-';
-        tmp_int = (unsigned long)(-(long)value);
-    }
-    */
-    p_s = p;
-
-    do {
-        i2c = tmp_int % scale; 
-        *p++ = i2c >=10? i2c - 10 + 'a': i2c + '0';
-        tmp_int /= scale;
-    } while (tmp_int > 0);
-    *p-- = '\0';
-
-    do {
-        c = *p;
-        *p-- = *p_s;
-        *p_s++ = c;
-    } while(p > p_s);
-    return p - buffer;
+    // 函数返回时 ptr2buf_ptr 中 buf 的指针会被改变
+    if(v) itoa(v, ptr2buf_ptr, base);
+    // 取出 buffer 的地址
+    // 完成后 buffer 的地址要加 1，移到后面一位
+    // 当前 buffer 指向的字符填上数值
+    *((*ptr2buf_ptr)++) = m < 10? m + '0': m - 10 + 'a';
 }
 
 int vsprintf(char* buf, const char* format, va_list arg) {
     char* buf_ptr = buf;
     char* tmp_ptr = NULL;
-    uint32_t int_tmp;
     char ch;
 
     while (( ch = *format++ )) {
@@ -55,18 +36,14 @@ int vsprintf(char* buf, const char* format, va_list arg) {
                     break;
                 case 's':
                     tmp_ptr = va_arg(arg, char *);
-                    strcpy(buf, va_arg(arg, char *));
+                    strcpy(buf, tmp_ptr);
                     buf_ptr += strlen(tmp_ptr);
                     break;
                 case 'd':
-                    int_tmp = va_arg(arg, int);
-                    int_tmp = itoa(int_tmp, buf_ptr, 10);
-                    buf_ptr += int_tmp;
+                    itoa(va_arg(arg, int), &buf_ptr, 10);
                     break;
                 case 'x':
-                    int_tmp = va_arg(arg, int);
-                    int_tmp = itoa(int_tmp, buf_ptr, 16);
-                    buf_ptr += int_tmp;
+                    itoa(va_arg(arg, int), &buf_ptr, 16);
                     break;
             }
         } else { *buf_ptr++ = ch; }

@@ -60,10 +60,9 @@ void update_cursor(uint16_t pos)
 	outb(CRT_CTRL_DATA_R, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-uint32_t _putchar(char c)
+static uint32_t _putchar(char c)
 {
     char* p_strdst = (char*)(VGA_ADDR);
-    lock_acquire(&print_lock);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
     uint16_t pos = get_cursor_position();
 
@@ -87,62 +86,33 @@ uint32_t _putchar(char c)
             *(p_strdst + pos * 2) = c;
             update_cursor(pos + 1);
     }
-    lock_release(&print_lock);
     return 1;
 }
                 
-uint32_t syscall_write(char *s) {
+int syscall_write(char *s) {
     char c;
     int length = 0;
+    lock_acquire(&print_lock);
     while ((c = *s++)) {
         _putchar(c);
         length ++;
     }
+    lock_release(&print_lock);
     return length;
 }
 
-uint32_t printk(char* fmt, ...) {
-    uint32_t int_temp;
-    char ch;
-    char char_temp;
-    char buffer[512];
-    char *string_temp;
-    va_list arg;
-    uint32_t length = 0;
-    va_start(arg, fmt);
+int printk(char* format, ...) {
+    char buf[1024] = {0};
+    va_list args;
 
-    while (( ch = *fmt++ )) {
-        if ('%' == ch) {
-            switch ((ch = *fmt++)) {
-                case '%':
-                    length += _putchar('%');
-                    break;
-                case 'c':
-                    char_temp = va_arg(arg, int);
-                    length += _putchar(char_temp);
-                    break;
-                case 's':
-                    string_temp = va_arg(arg, char *);
-                    length += syscall_write(string_temp);
-                    break;
-                case 'd':
-                    int_temp = va_arg(arg, int);
-                    itoa(int_temp, buffer, 10);
-                    length += syscall_write(buffer);
-                    break;
-                case 'x':
-                    int_temp = va_arg(arg, int);
-                    itoa(int_temp, buffer, 16);
-                    length += syscall_write(buffer);
-                    break;
-            }
-        } else { length += _putchar(ch); }
-    }
-
-    va_end(arg);
-    return length;
+    // arg 指向了 format
+    va_start(args, format);
+    vsprintf(buf, format, args);
+    va_end(args);
+    return syscall_write(buf);
 }
 
 void console_init() {
     lock_init(&print_lock);
 }
+

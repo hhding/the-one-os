@@ -10,4 +10,4 @@ typedef char* va_list;
 int printf(const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int vsprintf(char *str, const char *format, va_list ap);
-int itoa(uint32_t value, char* buffer, int scale);
+void itoa(uint32_t value, char** ptr2buf_ptr, int base);
