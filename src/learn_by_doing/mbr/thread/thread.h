@@ -103,6 +103,7 @@ void schedule(void);
 void thread_init(void);
 void thread_block(enum task_status status);
 void thread_unblock(struct task_struct* pthread);
+void thread_yield(void);
 uint32_t allocate_pid(void);
 uint32_t syscall_getpid(void);
 #endif

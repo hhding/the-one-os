@@ -17,6 +17,7 @@ static void kernel_thread(thread_func* func, void* func_arg) {
 }
 
 struct task_struct* main_thread;
+struct task_struct* idle_thread;
 
 struct list thread_ready_list;
 struct list thread_all_list;
@@ -99,8 +100,10 @@ void schedule() {
         // TODO
         // 其他状态处理
     }
-    // 这个后面要 FIXME
-    ASSERT(!list_empty(&thread_ready_list));
+    if(list_empty(&thread_ready_list)) {
+        thread_unblock(idle_thread);
+    }
+
     thread_tag = NULL;
     thread_tag = list_pop(&thread_ready_list);
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
@@ -108,6 +111,17 @@ void schedule() {
     process_activate(next);
     // printk("schedule: switch to: %s to %s\n", cur->name, next->name);
     switch_to(cur, next);
+}
+
+void thread_yield() {
+    enum intr_status old_intr_status = intr_disable();
+    schedule();
+    intr_set_status(old_intr_status);
+}
+
+void idle(void* arg) {
+    thread_block(TASK_BLOCKED);
+    asm volatile("sti; hlt" : : :"memory");
 }
 
 void thread_block(enum task_status status) {
@@ -144,6 +158,7 @@ void thread_init(void) {
     list_init(&thread_all_list);
 
     make_main_thread();
+    idle_thread = thread_start("idle", 10, idle, NULL);
     printk("thread_init done\n");
 }
 

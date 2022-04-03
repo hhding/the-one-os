@@ -62,7 +62,8 @@ void main()
     intr_enable();
 
 	while(1) {
-    //    printk("Main ");
+        printk("Main ");
+        mtime_sleep(1000);
     };
     return;
 }

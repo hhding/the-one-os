@@ -11,32 +11,35 @@ CC              = gcc
 LD              = ld
 
 ASMBFLAGS       = -f elf -w-orphan-labels
-CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic
+CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic -I./device -I./kernel -I./lib -I./thread -I./userprog
 LDFLAGS         = -static -T ld.lds -n -Map hello.map
 #LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 
-objfiles = main.o printk.o interrupt.o interrupt_helper.o debug.o string.o bitmap.o memory.o thread.o list.o switch.o timer.o sync.o keyboard.o tss.o process.o syscall.o stdio.o
+objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o
 
-bin: mbr.bin loader.bin kernel.bin
-	@dd if=mbr.bin of=/mnt/d/mbr bs=512 seek=0 conv=notrunc
-	@dd if=loader.bin of=/mnt/d/mbr bs=512 seek=1 conv=notrunc
-	@dd if=kernel.bin of=/mnt/d/mbr bs=512 seek=9 conv=notrunc
-	@nm kernel.bin | cut -d' ' -f1,3 > /mnt/d/utils/sym.dat
+bin: boot/mbr.bin boot/loader.bin kernel/kernel.bin
+	@dd if=boot/mbr.bin of=/mnt/d/mbr bs=512 seek=0 conv=notrunc
+	@dd if=boot/loader.bin of=/mnt/d/mbr bs=512 seek=1 conv=notrunc
+	@dd if=kernel/kernel.bin of=/mnt/d/mbr bs=512 seek=9 conv=notrunc
+	@nm kernel/kernel.bin | cut -d' ' -f1,3 > /mnt/d/utils/sym.dat
 
-kernel.bin: $(objfiles)
+kernel/kernel.bin: $(objfiles)
 	$(LD) $(LDFLAGS) -o $@ $(objfiles)
 
-interrupt_helper.o: interrupt_helper.asm
+kernel/interrupt_helper.o: kernel/interrupt_helper.asm
 	$(ASM) -f elf -o $@ $<
 
-switch.o: switch.asm
+kernel/switch.o: kernel/switch.asm
 	$(ASM) -f elf -o $@ $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@	
 
+boot/mbr.bin: boot/mbr.asm
+	$(ASM) -o $@ $<
+
 %.bin: %.asm
 	$(ASM) -o $@ $<
 
 clean:
-	$(RM) -f *.o *.bin *.map
+	$(RM) -f */*.o */*.bin *.map

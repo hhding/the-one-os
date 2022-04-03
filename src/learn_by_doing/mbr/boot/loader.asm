@@ -1,4 +1,4 @@
-%include "boot.inc"
+%include "boot/boot.inc"
 
 section loader vstart=LOADER_BASE_ADDR
     GDT_BASE:           dd  0x00000000

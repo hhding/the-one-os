@@ -1,5 +1,5 @@
 org 0x7c00
-%include "boot.inc"
+%include "boot/boot.inc"
 jmp entry
 
 entry:

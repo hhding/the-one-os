@@ -14,7 +14,19 @@
 #define READ_WRITE_LATCH   3
 #define PIT_CONTROL_PORT   0x43
 
+#define ms_per_intr (1000 / IRQ0_FREQUENCY)
+
 uint32_t ticks;
+
+static void ticks_to_sleep(uint32_t sleep_ticks) {
+    uint32_t end_ticks = ticks + sleep_ticks;
+    while(ticks < end_ticks) thread_yield();
+}
+
+void mtime_sleep(uint32_t m_seconds) {
+    uint32_t sleep_ticks = DIV_ROUND_UP(m_seconds, ms_per_intr);
+    ticks_to_sleep(sleep_ticks*1000);
+}
 
 static void frequency_set(uint8_t counter_port, \
               uint8_t counter_no, \
