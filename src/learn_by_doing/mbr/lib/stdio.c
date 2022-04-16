@@ -53,6 +53,14 @@ int vsprintf(char* buf, const char* format, va_list arg) {
     return strlen(buf);
 }
 
+int sprintf(char *str, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vsprintf(str, format, args);
+    va_end(args);
+    return strlen(str);
+}
+
 int printf(const char* format, ...)
 {
     char buf[1024] = {0};

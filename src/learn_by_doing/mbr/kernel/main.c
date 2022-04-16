@@ -9,6 +9,7 @@
 #include "process.h"
 #include "syscall.h"
 #include "stdio.h"
+#include "ide.h"
 
 int test_var_a = 0, test_var_b = 0;
 
@@ -57,6 +58,7 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
+    ide_init();
     init_syscall();
     // Page Fault
     //*(char*)(0xb00000) = '1';
