@@ -23,5 +23,6 @@ switch_to:
     pop ebx
     pop edi
     pop esi
-    ret                 ; 最后，返回到 ret addr 继续执行
+    ret                 ; 最后，返回到 ret addr 继续执行，这里实际上返回到 schedule 函数
+                        ; 整个函数只是恢复了 next 函数的运行环境，即 esp，ebp，ebx，edi和 esi
 

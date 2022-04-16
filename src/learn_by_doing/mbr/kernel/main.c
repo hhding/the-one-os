@@ -23,7 +23,9 @@ void k_thread_a(void * arg) {
 }
 
 void k_thread_b(void * arg) {
-    while(1);
+    while(1) {
+        thread_yield();
+    }
 }
 
 /* 测试用户进程 */
@@ -32,7 +34,10 @@ void __attribute__((optimize("O0"))) u_prog_a(void) {
     char* p2 = malloc(12);
     free(p2);
     printf("u_prog_a: p1<0x%x>\n", (uint32_t)p1);
-    while(1);
+    while(1) {
+        printk("upa ");
+        mtime_sleep(1000);
+    }
 }
 
 /* 测试用户进程 */
@@ -55,15 +60,12 @@ void main()
     init_syscall();
     // Page Fault
     //*(char*)(0xb00000) = '1';
-    process_execute(u_prog_a, "user_prog_a");
-    process_execute(u_prog_b, "user_prog_b");
-    thread_start("k_thread_a", 31, k_thread_a, "hello");
+    //process_execute(u_prog_a, "user_prog_a");
+    //process_execute(u_prog_b, "user_prog_b");
+    //thread_start("k_thread_a", 31, k_thread_a, "hello");
     thread_start("k_thread_b", 31, k_thread_b, "world");
     intr_enable();
 
-	while(1) {
-        printk("Main ");
-        mtime_sleep(1000);
-    };
+	while(1) {};
     return;
 }
