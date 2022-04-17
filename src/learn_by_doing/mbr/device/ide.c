@@ -42,6 +42,19 @@
 #define DISK_CNT_ADDR 0x475
 struct ide_channel channels[2];
 
+struct partition_table {
+    uint8_t bootable;
+    uint8_t start_head;
+    uint8_t start_sector;
+    uint8_t start_chs;
+    uint8_t fs_type;
+    uint8_t end_head;
+    uint8_t end_sector;
+    uint8_t end_chs;
+    uint32_t start_lba;
+    uint32_t sector_cnt;
+} __attribute__ ((packed));
+
 static void select_disk(struct disk* hd) {
     outb(reg_dev(hd->my_channel), hd->dev_no*0x10 + BIT_DEV_MBS);
 }
@@ -59,7 +72,7 @@ void intr_hd_handler(uint8_t irq_no) {
 
     if(channel->expecting_intr) {
         channel->expecting_intr = false;
-        sema_up(&channel->disk_done);
+        //sema_up(&channel->disk_done);
         inb(reg_status(channel));
     }
 }
@@ -96,17 +109,22 @@ static char* le2be(const char* src, char* buf, uint32_t len) {
 static void identify_disk(struct disk* hd) {
     char id_info[512];
     struct ide_channel* channel = hd->my_channel;
-    printk("    identify disk: %s\n", hd->name);
     select_disk(hd);
     cmd_out(channel, CMD_IDENTIFY);
+
+    /*
     sema_down(&channel->disk_done);
+    */
 
     if(!busy_wait(hd)) {
         char error[64];
         sprintf(error, "%s identify failed!!!\n", hd->name);
+        printk(error);
+        return;
         PANIC(error);
     }
 
+    printk("  identify disk: %s\n", hd->name);
     read_buffer(hd, id_info, 1);
     char buf[64];
     printk("    SN: %s\n", le2be(&id_info[20], buf, 20));

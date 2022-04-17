@@ -61,6 +61,7 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
+    ide_init();
     init_syscall();
     // Page Fault
     //*(char*)(0xb00000) = '1';
@@ -69,7 +70,6 @@ void main()
     //thread_start("k_thread_a", 31, k_thread_a, "hello");
     thread_start("k_thread_b", 31, k_thread_b, "world");
     intr_enable();
-    ide_init();
 
 	while(1) {};
     return;
