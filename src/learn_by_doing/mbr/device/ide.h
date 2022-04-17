@@ -17,7 +17,6 @@ struct partition {
     struct list open_inodes;
 };
 
-
 struct disk {
     char name[8];
     struct ide_channel* my_channel;

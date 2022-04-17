@@ -42,6 +42,80 @@
 #define DISK_CNT_ADDR 0x475
 struct ide_channel channels[2];
 
+static void select_disk(struct disk* hd) {
+    outb(reg_dev(hd->my_channel), hd->dev_no*0x10 + BIT_DEV_MBS);
+}
+
+static void cmd_out(struct ide_channel* channel, uint8_t cmd) {
+    channel->expecting_intr = true;
+    outb(reg_cmd(channel), cmd);
+}
+
+void intr_hd_handler(uint8_t irq_no) {
+    ASSERT(irq_no == 0x2e || irq_no == 0x2f);
+    uint8_t ch_no = irq_no - 0x2e;
+    struct ide_channel* channel = &channels[ch_no];
+    ASSERT(channel->irq_no == irq_no);
+
+    if(channel->expecting_intr) {
+        channel->expecting_intr = false;
+        sema_up(&channel->disk_done);
+        inb(reg_status(channel));
+    }
+}
+
+static bool busy_wait(struct disk* hd) {
+    int max_wait=3000, interval = 10;
+    struct ide_channel* channel = hd->my_channel;
+
+    for(int i = 0; i < max_wait; i += interval) {
+        if(inb(reg_status(channel)) & BIT_STAT_BSY) {
+            mtime_sleep(interval);
+        } else {
+            return (inb(reg_status(channel)) & BIT_STAT_DRQ);
+        }
+    }
+    return false;
+}
+
+static void read_buffer(struct disk* hd, void* buf, uint8_t cnt) {
+    uint32_t size = 512 * (cnt==0? 256: cnt);
+    insw(reg_data(hd->my_channel), buf, size / 2);
+}
+
+static char* le2be(const char* src, char* buf, uint32_t len) {
+    uint32_t idx;
+    for(idx = 0; idx < len; idx += 2) {
+        buf[idx + 1] = *src++;
+        buf[idx] = *src++;
+    }
+    buf[idx] = 0;
+    return buf;
+}
+
+static void identify_disk(struct disk* hd) {
+    char id_info[512];
+    struct ide_channel* channel = hd->my_channel;
+    printk("    identify disk: %s\n", hd->name);
+    select_disk(hd);
+    cmd_out(channel, CMD_IDENTIFY);
+    sema_down(&channel->disk_done);
+
+    if(!busy_wait(hd)) {
+        char error[64];
+        sprintf(error, "%s identify failed!!!\n", hd->name);
+        PANIC(error);
+    }
+
+    read_buffer(hd, id_info, 1);
+    char buf[64];
+    printk("    SN: %s\n", le2be(&id_info[20], buf, 20));
+    printk("    MODULE: %s\n", le2be(&id_info[27*2], buf, 40));
+    uint32_t sector_cnt = *((uint32_t*)&id_info[120]);
+    printk("    SECTORS: %d\n", sector_cnt);
+    printk("    CAPACITY: %dMiB\n", sector_cnt*512/ 1024/1024);
+}
+
 void ide_init() {
     printk("ide_init start\n");
     // 可以将其看作是一个8bit的指针，取其第一个值
@@ -56,14 +130,14 @@ void ide_init() {
         channel->expecting_intr = false;
         lock_init(&channel->lock);
         sema_init(&channel->disk_done, 0);
-        // register_handler(channel->irq_no, intr_hd_handler);
+        register_handler(channel->irq_no, intr_hd_handler);
         int dev_no = 0;
         while(dev_no < 2) {
             struct disk* hd = &channel->devices[dev_no];
             hd->my_channel = channel;
             hd->dev_no = dev_no;
             sprintf(hd->name, "hd%c", 'a' + i*2 + dev_no);
-            printk("%s\n", hd->name);
+            identify_disk(hd);
             dev_no++;
         }
     }
