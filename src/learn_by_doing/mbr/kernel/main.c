@@ -61,15 +61,15 @@ void main()
     timer_init();
     keyboard_init();
     tss_init();
-    ide_init();
     init_syscall();
+    intr_enable();
+    ide_init();
     // Page Fault
     //*(char*)(0xb00000) = '1';
     //process_execute(u_prog_a, "user_prog_a");
     //process_execute(u_prog_b, "user_prog_b");
     //thread_start("k_thread_a", 31, k_thread_a, "hello");
     thread_start("k_thread_b", 31, k_thread_b, "world");
-    intr_enable();
 
 	while(1) {};
     return;
