@@ -90,14 +90,12 @@ void intr_hd_handler(uint8_t irq_no) {
 static bool busy_wait(struct disk* hd) {
     int max_wait=3000, interval = 10;
     struct ide_channel* channel = hd->my_channel;
-    uint32_t status;
 
     for(int i = 0; i < max_wait; i += interval) {
-        status = inb(reg_status(channel));
+        int status = inb(reg_status(channel));
         if(status & BIT_STAT_BSY) {
             mtime_sleep(interval);
         } else {
-            printk("busy_wait: disk %s status: 0x%x\n", hd->name, status);
             return (status & BIT_STAT_DRQ);
         }
     }
@@ -134,7 +132,7 @@ void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt)
 
         cmd_out(hd->my_channel, CMD_READ_SECTOR);
         sema_down(&hd->my_channel->disk_done);
-        printk("read disk(%s): back from sema\n", hd->name);
+        printk("read disk(%s): before sema\n", hd->name);
 
         if(!busy_wait(hd)) {
             char error[64];
