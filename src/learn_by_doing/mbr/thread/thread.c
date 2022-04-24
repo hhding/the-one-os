@@ -120,8 +120,10 @@ void thread_yield() {
 }
 
 void idle(void* arg) {
-    thread_block(TASK_BLOCKED);
-    asm volatile("sti; hlt" : : :"memory");
+    while(1) {
+        thread_block(TASK_BLOCKED);
+        asm volatile("sti; hlt" : : :"memory");
+    }
 }
 
 void thread_block(enum task_status status) {

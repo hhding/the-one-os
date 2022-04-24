@@ -20,7 +20,11 @@ void k_thread_a(void * arg) {
     free(p2);
     char* p3 = malloc(60);
     printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p3);
-    while(1);
+    while(1) {
+        printk("a");
+        mtime_sleep(1000);
+        thread_yield();
+    }
 }
 
 void k_thread_b(void * arg) {
@@ -63,14 +67,19 @@ void main()
     tss_init();
     init_syscall();
     intr_enable();
-    ide_init();
     // Page Fault
     //*(char*)(0xb00000) = '1';
     //process_execute(u_prog_a, "user_prog_a");
     //process_execute(u_prog_b, "user_prog_b");
-    //thread_start("k_thread_a", 31, k_thread_a, "hello");
-    thread_start("k_thread_b", 31, k_thread_b, "world");
+    printk("init ide...\n");
+    ide_init();
+    printk("creating thread\n");
+    thread_start("k_thread_a", 31, k_thread_a, "hello");
+    //thread_start("k_thread_b", 31, k_thread_b, "world");
 
-	while(1) {};
+    while(1) {
+        mtime_sleep(1000);
+        printk("Main ");
+    };
     return;
 }

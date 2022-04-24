@@ -141,9 +141,11 @@ void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt)
                     hd->name, lba, sector_cnt);
             PANIC(error);
         }
+        printk("read_buffer(%s): after wait\n", hd->name);
         read_buffer(hd, (void*)((uint32_t)buffer + sector_done * 512), sector_size);
         sector_done += sector_size;
     } while(sector_done < sector_cnt);
+    printk("read done (%s): release lock\n", hd->name);
 
     lock_release(&hd->my_channel->lock);
 }
@@ -185,7 +187,7 @@ void ide_init() {
     channels[1].port_base = 0x170;
     channels[1].irq_no = 0x20 + 15;
     struct ide_channel* channel;
-    for(int i=0; i<2; i++) {
+    for(int i=0; i<1; i++) {
         channel = &channels[i];
         channel->expecting_intr = false;
         lock_init(&channel->lock);
