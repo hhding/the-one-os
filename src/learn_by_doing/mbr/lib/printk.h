@@ -3,4 +3,4 @@
 void update_cursor(uint16_t pos);
 int printk(char* format, ...);
 void console_init(void);
-int sys_write(char * s);
+int stdout_write(char * s);

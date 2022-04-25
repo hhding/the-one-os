@@ -89,7 +89,7 @@ static uint32_t _putchar(char c)
     return 1;
 }
                 
-int sys_write(char *s) {
+int stdout_write(char *s) {
     char c;
     int length = 0;
     lock_acquire(&print_lock);
@@ -109,7 +109,7 @@ int printk(char* format, ...) {
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
-    return sys_write(buf);
+    return stdout_write(buf);
 }
 
 void console_init() {

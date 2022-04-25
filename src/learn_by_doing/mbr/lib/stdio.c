@@ -4,10 +4,6 @@
 #include "string.h"
 #include "syscall.h"
 
-uint32_t puts(char *s) {
-    return sys_write(s);
-}
-
 void itoa(uint32_t value, char** ptr2buf_ptr, int base) {
     uint32_t m = value % base;
     uint32_t v = value / base;
