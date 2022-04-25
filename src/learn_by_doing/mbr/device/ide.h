@@ -39,8 +39,8 @@ void ide_init(void);
 extern uint8_t channel_cnt;
 extern struct ide_channel channels[];
 extern struct list partition_list;
-void ide_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt);
-void ide_write(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt);
+void disk_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt);
+void disk_write(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt);
 
 #endif
 

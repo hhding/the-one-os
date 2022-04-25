@@ -55,6 +55,12 @@ struct partition_table {
     uint32_t sector_cnt;
 } __attribute__ ((packed));
 
+struct boot_sector {
+    uint8_t other[446];
+    struct partition_table part_table[4];
+    uint16_t signature; // 0x55, 0xaa
+} __attribute__ ((packed));
+
 static void select_disk(struct disk* hd) {
     outb(reg_dev(hd->my_channel), hd->dev_no*0x10 + BIT_DEV_MBS);
 }
@@ -107,6 +113,11 @@ static void read_buffer(struct disk* hd, void* buf, uint8_t cnt) {
     insw(reg_data(hd->my_channel), buf, size / 2);
 }
 
+static void write_buffer(struct disk* hd, void* buf, uint8_t cnt) {
+    uint32_t size = 512 * (cnt==0? 256: cnt);
+    outsw(reg_data(hd->my_channel), buf, size / 2);
+}
+
 static char* le2be(const char* src, char* buf, uint32_t len) {
     uint32_t idx;
     for(idx = 0; idx < len; idx += 2) {
@@ -126,13 +137,9 @@ void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt)
     do {
         sector_size = sector_cnt - sector_done;
         sector_size = sector_size > 256? 256: sector_size;
-
         set_disk_sector(hd, lba + sector_done, sector_size);
-        printk("read disk(%s): %d\n", hd->name, sector_size);
-
         cmd_out(hd->my_channel, CMD_READ_SECTOR);
         sema_down(&hd->my_channel->disk_done);
-        printk("read disk(%s): before sema\n", hd->name);
 
         if(!busy_wait(hd)) {
             char error[64];
@@ -141,11 +148,35 @@ void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt)
                     hd->name, lba, sector_cnt);
             PANIC(error);
         }
-        printk("read_buffer(%s): after wait\n", hd->name);
         read_buffer(hd, (void*)((uint32_t)buffer + sector_done * 512), sector_size);
         sector_done += sector_size;
     } while(sector_done < sector_cnt);
-    printk("read done (%s): release lock\n", hd->name);
+
+    lock_release(&hd->my_channel->lock);
+}
+
+void disk_write(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt) {
+    uint32_t sector_done = 0;
+    uint32_t sector_size = 0;
+
+    lock_acquire(&hd->my_channel->lock);
+    do {
+        sector_size = sector_cnt - sector_done;
+        sector_size = sector_size > 256? 256: sector_size;
+        set_disk_sector(hd, lba + sector_done, sector_size);
+        cmd_out(hd->my_channel, CMD_WRITE_SECTOR);
+
+        if(!busy_wait(hd)) {
+            char error[64];
+            sprintf(error, 
+                    "Write %s addr:0x%x, sec: %d failed!!!\n", 
+                    hd->name, lba, sector_cnt);
+            PANIC(error);
+        }
+        write_buffer(hd, (void*)((uint32_t)buffer + sector_done * 512), sector_size);
+        sema_down(&hd->my_channel->disk_done);
+        sector_done += sector_size;
+    } while(sector_done < sector_cnt);
 
     lock_release(&hd->my_channel->lock);
 }
@@ -174,8 +205,30 @@ static void identify_disk(struct disk* hd) {
     printk("    SECTORS: %d\n", sector_cnt);
     printk("    CAPACITY: %dMiB\n", sector_cnt*512/ 1024/1024);
 
-    char* p = syscall_malloc(262144);
+    char* p = sys_malloc(262144);
     disk_read(hd, 0, p, 1);
+}
+
+static void partition_scan(struct disk* hd) {
+    struct boot_sector *bs = sys_malloc(sizeof(struct boot_sector));
+    disk_read(hd, 0, bs, 1);
+    struct partition_table *pt = bs->part_table;
+    for(int part_idx = 0; part_idx < 4; part_idx++) {
+        // 扩展分区
+        if(pt->fs_type == 0x5) {
+            printk("Skip extended partition\n");
+        } else if(pt->fs_type != 0) {
+            struct partition* p;
+            p = &hd->primary[part_idx];
+            p->start_lba = pt->start_lba;
+            p->sector_cnt = pt->sector_cnt;
+            p->my_disk = hd;
+            sprintf(p->name, "%s%d", hd->name, part_idx + 1);
+            printk(" %s start_lba:0x%x, sec_cnt:0x%x\n", p->name, p->start_lba, p->sector_cnt);
+            pt++;
+        }
+    }
+    sys_free(bs);
 }
 
 void ide_init() {
@@ -200,6 +253,7 @@ void ide_init() {
             hd->dev_no = dev_no;
             sprintf(hd->name, "hd%c", 'a' + i*2 + dev_no);
             identify_disk(hd);
+            partition_scan(hd);
             dev_no++;
         }
     }

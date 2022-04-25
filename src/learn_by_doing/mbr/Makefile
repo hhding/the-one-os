@@ -11,11 +11,11 @@ CC              = i686-elf-gcc
 LD              = i686-elf-ld
 
 ASMBFLAGS       = -f elf -w-orphan-labels
-CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic -I./device -I./kernel -I./lib -I./thread -I./userprog
+CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic -I./device -I./kernel -I./lib -I./thread -I./userprog -I./fs
 LDFLAGS         = -static -T ld.lds -n -Map hello.map
 #LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 
-objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o
+objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o fs/fs.o
 
 bin: boot/mbr.bin boot/loader.bin kernel/kernel.bin
 	@dd if=boot/mbr.bin of=disk0 bs=512 seek=0 conv=notrunc

@@ -201,7 +201,7 @@ struct arena* block2arena(struct mem_block* b) {
     return (struct arena*)((uint32_t)b & 0xFFFFF000);
 }
 
-void* syscall_malloc(uint32_t size) {
+void* sys_malloc(uint32_t size) {
     struct task_struct* cur = running_thread();
     struct pool* mem_pool;
     enum pool_flags PF;
@@ -322,7 +322,7 @@ void mfree_page(enum pool_flags pf, void* _vaddr, uint32_t cnt) {
     vaddr_remove(pf, _vaddr, cnt);
 }
 
-void syscall_free(void* ptr) {
+void sys_free(void* ptr) {
     struct task_struct* cur = running_thread();
     enum pool_flags pf;
     struct pool* mem_pool;

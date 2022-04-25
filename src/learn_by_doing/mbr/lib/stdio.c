@@ -5,7 +5,7 @@
 #include "syscall.h"
 
 uint32_t puts(char *s) {
-    return syscall_write(s);
+    return sys_write(s);
 }
 
 void itoa(uint32_t value, char** ptr2buf_ptr, int base) {

@@ -149,7 +149,7 @@ void thread_unblock(struct task_struct* pthread) {
     intr_set_status(old_intr_status);
 }
 
-uint32_t syscall_getpid(void) {
+uint32_t sys_getpid(void) {
     struct task_struct * cur = running_thread();
     return cur->pid;
 }

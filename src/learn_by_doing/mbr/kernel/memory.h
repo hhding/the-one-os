@@ -50,8 +50,9 @@ uint32_t* pde_ptr(uint32_t vaddr);
 uint32_t addr_v2p(uint32_t vaddr);
 void* get_a_page(enum pool_flags pf, uint32_t vaddr);
 void* get_user_pages(uint32_t pg_cnt);
-void* syscall_malloc(uint32_t size);
+void* sys_malloc(uint32_t size);
 void pfree(uint32_t pg_phy_addr);
-void syscall_free(void* ptr);
+void sys_free(void* ptr);
 void block_desc_init(struct mem_block_desc* desc_arry);
 #endif
+
