@@ -46,7 +46,41 @@ void partition_format(struct partition* part) {
     struct disk* hd = part->my_disk;
     disk_write(hd, part->start_lba+1, sb, 1);
     printk("  super_block_lba:0x%x\n", part->start_lba + 1);
+    uint32_t buf_size = SECTOR_SIZE * (inode_table_sects > block_bitmap_sects? inode_table_sects: block_bitmap_sects);
+    uint8_t* buf = (uint8_t *)sys_malloc(buf_size);
+    // block_bitmap => sb->block_bitmap_lba
+    // 未对齐多出来的部分不做处理
+    buf[0] |=0x01;  
+    disk_write(hd, sb->block_bitmap_lba, buf, sb->block_bitmap_sects);
 
+    memset(buf, 0, buf_size);
+    buf[0] |= 0x1;
+    disk_write(hd, sb->inode_bitmap_lba, buf, sb->inode_bitmap_sects);
+
+    memset(buf, 0, buf_size);
+    struct inode* i = (struct inode*)buf;
+    i->i_size = sb->dir_entry_size * 2; // . and ..
+    i->i_no = 0;
+    i->i_sectors[0] = sb->data_start_lba;
+    disk_write(hd, sb->inode_table_lba, buf, sb->inode_table_sects);
+
+    memset(buf, 0, buf_size);
+    struct dir_entry* p_de = (struct dir_entry*)buf;
+    memcpy(p_de->filename, ".", 1);
+    p_de->i_no = 0;
+    p_de->f_type = FT_DIRECTORY;
+    p_de++;
+
+    memcpy(p_de->filename, "..", 2);
+    p_de->i_no = 0;
+    p_de->f_type = FT_DIRECTORY;
+
+    disk_write(hd, sb->data_start_lba, buf, 1);
+    
+    printk("  root_dir_lba:%d\n", sb->data_start_lba);
+    printk("%s format done\n", part->name);
+    sys_free(sb);
+    sys_free(buf);
 }
 
 void filesystem_init() {
