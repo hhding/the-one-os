@@ -4,7 +4,7 @@
 
 #define MAX_FILES_PER_PART 4096     // 每个分区所支持最大创建的文件数
 #define SECTOR_SIZE 512         // 扇区字节大小
-#define BLOCK_SIZE 4096
+#define BLOCK_SIZE 512
 
 #define MAX_PATH_LEN 512        // 路径最大长度
                                 

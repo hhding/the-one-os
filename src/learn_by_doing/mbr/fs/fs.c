@@ -15,17 +15,22 @@
 #define FS_MAGIC 0x20220225
 
 void partition_format(struct partition* part) {
+    /*
+     * 分区内结构如下
+     * | 操作系统引导块 | 超级块 | 空闲块位图 | inode位图 | inode数组 | 根目录 | 空闲块 |
+     */
     uint32_t boot_sector_sects = 1;
     uint32_t super_block_sects = 1;
-    uint32_t inode_bitmap_sects = DIV_ROUND_UP(MAX_FILES_PER_PART, SECTOR_SIZE);
+    uint32_t inode_bitmap_sects = DIV_ROUND_UP(MAX_FILES_PER_PART, SECTOR_SIZE*8);
     uint32_t inode_table_sects = DIV_ROUND_UP( ((sizeof(struct inode)) * MAX_FILES_PER_PART), SECTOR_SIZE);
     uint32_t used_sects = boot_sector_sects + super_block_sects + inode_bitmap_sects + inode_table_sects;
     uint32_t free_sects = part->sector_cnt - used_sects;
 
-    uint32_t block_bitmap_sects = DIV_ROUND_UP(free_sects, BLOCK_SIZE);
+    uint32_t block_bitmap_sects = DIV_ROUND_UP(free_sects, SECTOR_SIZE*8);
     uint32_t block_bitmap_bit_len = free_sects - block_bitmap_sects;
-    block_bitmap_sects = DIV_ROUND_UP(block_bitmap_bit_len, BLOCK_SIZE);
+    block_bitmap_sects = DIV_ROUND_UP(block_bitmap_bit_len, SECTOR_SIZE*8);
 
+    /* 超级块部分 */
     struct super_block *sb = (struct super_block*)sys_malloc(sizeof(struct super_block));
     sb->magic = FS_MAGIC;
     sb->sec_cnt = part->sector_cnt;;
@@ -34,29 +39,36 @@ void partition_format(struct partition* part) {
 
     sb->block_bitmap_lba = sb->part_lba_base + 2; // 第0块是引导块，第一块是超级块
     sb->block_bitmap_sects = block_bitmap_sects;
+
     sb->inode_bitmap_lba = sb->block_bitmap_lba + block_bitmap_sects;
     sb->inode_bitmap_sects = inode_bitmap_sects;
+
     sb->inode_table_lba = sb->inode_bitmap_lba + inode_bitmap_sects;
     sb->inode_table_sects = inode_table_sects;
+
     sb->data_start_lba = sb->inode_table_lba + inode_table_sects;
     sb->root_inode_no = 0;
     sb->dir_entry_size = sizeof(struct dir_entry);
     printk("%s info:\n", part->name);
     printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   inode_table_sectors:0x%x\n   data_start_lba:0x%x\n", sb->magic, sb->part_lba_base, sb->sec_cnt, sb->inode_cnt, sb->block_bitmap_lba, sb->block_bitmap_sects, sb->inode_bitmap_lba, sb->inode_bitmap_sects, sb->inode_table_lba, sb->inode_table_sects, sb->data_start_lba);
     struct disk* hd = part->my_disk;
-    disk_write(hd, part->start_lba+1, sb, 1);
+    disk_write(hd, part->start_lba + 1, sb, 1);
     printk("  super_block_lba:0x%x\n", part->start_lba + 1);
+
     uint32_t buf_size = SECTOR_SIZE * (inode_table_sects > block_bitmap_sects? inode_table_sects: block_bitmap_sects);
     uint8_t* buf = (uint8_t *)sys_malloc(buf_size);
     // block_bitmap => sb->block_bitmap_lba
-    // 未对齐多出来的部分不做处理
+    // 未对齐多出来的部分不做处理，可能会出现越界的情况，先不管。FIXME
+    /* 空闲块位图部分 */
     buf[0] |=0x01;  
     disk_write(hd, sb->block_bitmap_lba, buf, sb->block_bitmap_sects);
 
+    /* inode 位图部分 */
     memset(buf, 0, buf_size);
     buf[0] |= 0x1;
     disk_write(hd, sb->inode_bitmap_lba, buf, sb->inode_bitmap_sects);
 
+    /* inode 表部分，里面包括了inode 信息，包括 inode 号，文件大小以及内容存放在哪里。*/
     memset(buf, 0, buf_size);
     struct inode* i = (struct inode*)buf;
     i->i_size = sb->dir_entry_size * 2; // . and ..
@@ -64,6 +76,8 @@ void partition_format(struct partition* part) {
     i->i_sectors[0] = sb->data_start_lba;
     disk_write(hd, sb->inode_table_lba, buf, sb->inode_table_sects);
 
+     
+    /* 数据部分，写入 inode=0 的数据，其包括两个项目，"." 和 ".."，都指向 inode 0，属性都为目录 */
     memset(buf, 0, buf_size);
     struct dir_entry* p_de = (struct dir_entry*)buf;
     memcpy(p_de->filename, ".", 1);
