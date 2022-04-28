@@ -58,6 +58,13 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
     pthread->status = TASK_READY;
     pthread->pgdir = NULL;
     pthread->pid = allocate_pid();
+    pthread->fd_table[0] = 0;
+    pthread->fd_table[1] = 1;
+    pthread->fd_table[2] = 2;
+    for(int fd_idx=3; fd_idx < MAX_FILES_OPEN_PER_PROC; fd_idx++) {
+        pthread->fd_table[fd_idx] = -1;
+    }
+    pthread->fd_table
     pthread->stack_magic = 20220120;
     pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PAGE_SIZE);
 }

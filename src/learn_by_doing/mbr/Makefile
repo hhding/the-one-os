@@ -10,6 +10,14 @@ ASM             = nasm
 CC              = i686-elf-gcc
 LD              = i686-elf-ld
 
+detected_os := $(shell sh -c 'uname -s')
+
+ifeq ($(detected_os),Linux)
+    CC              = gcc
+    LD              = ld
+endif
+
+
 ASMBFLAGS       = -f elf -w-orphan-labels
 CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack-protector -fomit-frame-pointer -fno-builtin -fno-common  -ffreestanding  -Wno-unused-parameter -Wunused-variable -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-pic -I./device -I./kernel -I./lib -I./thread -I./userprog -I./fs
 LDFLAGS         = -static -T ld.lds -n -Map hello.map
