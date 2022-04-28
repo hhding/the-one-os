@@ -14,6 +14,29 @@
 
 #define FS_MAGIC 0x20220225
 
+struct partition* cur_part;
+
+static void mount_partition(struct partition* part) {
+    cur_part = part;
+    struct disk* hd = cur_part->my_disk;
+
+    struct super_block* sb_buf = (struct super_block*)sys_malloc(SECTOR_SIZE);
+    ASSERT(sb_buf != NULL);
+    memset(sb_buf, 0, SECTOR_SIZE);
+    disk_read(hd, part->start_lba + 1, sb_buf, 1);
+
+    part->block_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->block_bitmap_sects * SECTOR_SIZE);
+    part->block_bitmap.btmp_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
+    disk_read(hd, sb_buf->block_bitmap_lba, part->block_bitmap.bits, sb_buf->block_bitmap_sects);
+
+    part->inode_bitmap.bits =  (uint8_t*)sys_malloc(sb_buf->inode_bitmap_sects * SECTOR_SIZE);
+    part->inode_bitmap.btmp_bytes_len = sb_buf->inode_bitmap_sects * SECTOR_SIZE;
+    disk_read(hd, sb_buf->inode_bitmap_lba, part->inode_bitmap.bits, sb_buf->inode_bitmap_sects);
+    
+    list_init(&part->open_inodes);
+    printk("mount %s done!\n", part->name);
+}
+
 void partition_format(struct partition* part) {
     /*
      * 分区内结构如下
