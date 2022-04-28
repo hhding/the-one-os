@@ -26,11 +26,11 @@ static void mount_partition(struct partition* part) {
     disk_read(hd, part->start_lba + 1, sb_buf, 1);
 
     part->block_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->block_bitmap_sects * SECTOR_SIZE);
-    part->block_bitmap.btmp_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
+    part->block_bitmap.btmap_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
     disk_read(hd, sb_buf->block_bitmap_lba, part->block_bitmap.bits, sb_buf->block_bitmap_sects);
 
     part->inode_bitmap.bits =  (uint8_t*)sys_malloc(sb_buf->inode_bitmap_sects * SECTOR_SIZE);
-    part->inode_bitmap.btmp_bytes_len = sb_buf->inode_bitmap_sects * SECTOR_SIZE;
+    part->inode_bitmap.btmap_bytes_len = sb_buf->inode_bitmap_sects * SECTOR_SIZE;
     disk_read(hd, sb_buf->inode_bitmap_lba, part->inode_bitmap.bits, sb_buf->inode_bitmap_sects);
     
     list_init(&part->open_inodes);
