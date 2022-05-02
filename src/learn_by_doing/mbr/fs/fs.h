@@ -33,6 +33,7 @@ struct stat {
     enum file_types st_filetype;
 };
 
+extern struct partition* cur_part;
 void filesystem_init(void);
 int32_t sys_open(const char* pathname, uint8_t flag);
 int32_t sys_close(int32_t fd);

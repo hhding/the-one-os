@@ -23,16 +23,16 @@ CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack
 LDFLAGS         = -static -T ld.lds -n -Map hello.map
 #LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 
-objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o fs/fs.o
+objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o fs/fs.o fs/inode.o
 
 bin: boot/mbr.bin boot/loader.bin kernel/kernel.bin
-	@dd if=boot/mbr.bin of=disk0 bs=512 seek=0 conv=notrunc
-	@dd if=boot/loader.bin of=disk0 bs=512 seek=1 conv=notrunc
-	@dd if=kernel/kernel.bin of=disk0 bs=512 seek=9 conv=notrunc
-	@nm kernel/kernel.bin | cut -d' ' -f1,3 > sym.dat
+	@dd if=boot/mbr.bin of=bochs/disk0 bs=512 seek=0 conv=notrunc
+	@dd if=boot/loader.bin of=bochs/disk0 bs=512 seek=1 conv=notrunc
+	@dd if=kernel/kernel.bin of=bochs/disk0 bs=512 seek=9 conv=notrunc
+	@nm kernel/kernel.bin | cut -d' ' -f1,3 > bochs/sym.dat
 
 run: bin
-	bochs -f bochsrc.bxrc
+	cd bochs && bochs -f bochsrc.bxrc
 
 kernel/kernel.bin: $(objfiles)
 	$(LD) $(LDFLAGS) -o $@ $(objfiles)
