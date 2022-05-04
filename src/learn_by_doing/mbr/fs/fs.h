@@ -27,6 +27,12 @@ enum whence {
     SEEK_END
 };
 
+struct path_search_record {
+    char search_path[MAX_PATH_LEN];
+    struct dir* parent_dir;
+    enum file_types file_type;
+};
+
 struct stat {
     uint32_t st_no;
     uint32_t st_size;
@@ -35,6 +41,7 @@ struct stat {
 
 extern struct partition* cur_part;
 void filesystem_init(void);
+int32_t path_depth_cnt(char* pathname);
 int32_t sys_open(const char* pathname, uint8_t flag);
 int32_t sys_close(int32_t fd);
 int32_t sys_write(int32_t fd, const void* buf, uint32_t count);
@@ -42,7 +49,9 @@ int32_t sys_read(int32_t fd, int32_t offset, uint8_t whence);
 int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence);
 int32_t sys_unlink(const char* pathname);
 int32_t sys_mkdir(const char* pathname);
-struct dir_entry* sys_opendir(const char* pathname);
+//struct dir_entry* sys_opendir(const char* pathname);
+struct dir* sys_opendir(const char* pathname);
+int32_t sys_closedir(struct dir* dir);
 void sys_rewinddir(struct dir* dir);
 int32_t sys_rmdir(const char* pathname);
 char* sys_getcwd(char* buf, uint32_t size);

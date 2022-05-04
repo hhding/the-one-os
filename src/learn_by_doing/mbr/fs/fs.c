@@ -120,6 +120,31 @@ void partition_format(struct partition* part) {
     sys_free(buf);
 }
 
+static char* path_parse(char* pathname, char* name_store) {
+    if(pathname[0] == '/') while(*(++pathname) == '/');
+    while(*pathname != '/' && *pathname !=0) {
+        *name_store++ = *pathname++;
+    }
+    if(pathname[0] == 0) return NULL;
+    return pathname;
+}
+
+int32_t path_depth_cnt(char* pathname) {
+    ASSERT(pathname != NULL);
+    char* p = pathname;
+    char name[MAX_FILE_NAME_LEN];
+    uint32_t depth = 0;
+
+    p = path_parse(p, name);
+    while(name[0]) {
+        depth++;
+        memset(name, 0, MAX_FILE_NAME_LEN);
+        if(p) p = path_parse(p, name);
+    }
+    return depth;
+}
+
+
 void filesystem_init() {
     struct super_block* sb_buf = (struct super_block*)sys_malloc(SECTOR_SIZE);
     if(sb_buf == NULL) PANIC("alloc memory failed!");

@@ -90,7 +90,7 @@ struct task_struct {
    uint32_t *pgdir;         // 页表虚拟地址
    struct virtual_addr userprog_vaddr;  //用户进程的虚拟地址
    struct mem_block_desc u_block_desc[DESC_CNT];
-   uint32_t fd_table[MAX_FILES_OPEN_PER_PROC];
+   int32_t fd_table[MAX_FILES_OPEN_PER_PROC];
    uint32_t cwd_inode_nr;
    uint32_t pid;
    uint32_t stack_magic;     // 用这串数字做栈的边界标记,用于检测栈的溢出
