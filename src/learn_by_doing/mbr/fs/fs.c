@@ -144,6 +144,52 @@ int32_t path_depth_cnt(char* pathname) {
     return depth;
 }
 
+static int search_file(const char* pathname, struct path_search_record* search_record) {
+    char* sub_path = pathname;
+    search_record->parent_dir = &root_dir;
+    search_record->file_type = FT_DIRECTORY;
+    search_record->search_path[0] = 0;
+    struct dir* parent_dir = &root_dir;
+    struct dir_entry dir_e;
+    uint32_t parent_inode_no = 0;
+
+    char name[MAX_FILE_NAME_LEN] = {0};
+
+    sub_path = path_parse(sub_path, name);
+    // name 是分析出来的前面一段路径
+    while(name[0]) {
+        ASSERT(strlen(search_record->search_path) < 512);
+        strcat(search_record->search_path, "/");
+        strcat(search_record->search_path, name);
+
+        if(search_dir_entry(cur_part, parent_dir, name, &dir_e)) {
+            memset(name, 0, MAX_FILE_NAME_LEN);
+            if(sub_path) {
+                sub_path = path_parse(sub_path, name);
+            }
+            if(FT_DIRECTORY == dir_e.f_type) {
+                parent_inode_no = parent_dir->inode->i_no;
+                dir_close(parent_dir);
+                parent_dir = dir_open(cur_part, dir_e.i_no);
+                search_record->parent_dir = parent_dir;
+                continue;
+            } else if(FT_REGULAR == dir_e.f_type) {
+                // 这里有个 bug，如果 /a/b/c/d 这样的路径，如果存在c，并且是文件，那么就会返回c的 inode
+                search_record->file_type == FT_REGULAR;
+                return dir_e.i_no;
+            }
+        } else {
+            // 路径不存在
+            return -1;
+        }
+    }
+
+    dir_close(search_record->parent_dir);
+    search_record->parent_dir = dir_open(cur_part, parent_inode_no);
+    search_record->file_type = FT_DIRECTORY;
+    return dir_e.i_no;
+
+}
 
 void filesystem_init() {
     struct super_block* sb_buf = (struct super_block*)sys_malloc(SECTOR_SIZE);
