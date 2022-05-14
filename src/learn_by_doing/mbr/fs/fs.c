@@ -121,11 +121,27 @@ void partition_format(struct partition* part) {
 }
 
 static char* path_parse(char* pathname, char* name_store) {
+    /*
+        path_parse 返回结果：
+        /a/b/c -> ret: b/c name: a
+        b/c -> ret: c name: b
+        c -> ret: NULL name: c
+        c/ -> ret: / name: c
+        c// -> ret: // name: c
+        c//. -> ret: //. name: c
+        //. -> ret: NULL name: .
+        / -> ret: NULL name: NULL
+        //// -> ret: NULL name: NULL
+        '' -> ret: NULL name: NULL
+    */
+    
+    // 跳过所有开头的 /，譬如 //////a//b/c，变为 a//b/c，再进行后续处理
     if(pathname[0] == '/') while(*(++pathname) == '/');
     while(*pathname != '/' && *pathname !=0) {
         *name_store++ = *pathname++;
     }
-    if(pathname[0] == 0) return NULL;
+    // name_store 原来有数据也没关系，不依赖外部，减少埋雷
+    *name_store = 0;
     return pathname;
 }
 
@@ -138,57 +154,67 @@ int32_t path_depth_cnt(char* pathname) {
     p = path_parse(p, name);
     while(name[0]) {
         depth++;
-        memset(name, 0, MAX_FILE_NAME_LEN);
         if(p) p = path_parse(p, name);
     }
     return depth;
 }
 
 static int search_file(const char* pathname, struct path_search_record* search_record) {
-    char* sub_path = pathname;
+    struct dir_entry dir_e;
+    struct dir* parent_dir = &root_dir;
+    uint32_t parent_inode_no = 0;
+    char* sub_path = (char*)pathname;
+
+    // 要求 pathname 以 '/' 开头
+    ASSERT(pathname[0] == '/');
+    // 先跳过所有的 '/'
+    while(*(sub_path++) == '/');
+
+    // 最开始的时候是 '/'，根是特殊的，需要手动初始化.
     search_record->parent_dir = &root_dir;
     search_record->file_type = FT_DIRECTORY;
     search_record->search_path[0] = 0;
-    struct dir* parent_dir = &root_dir;
-    struct dir_entry dir_e;
-    uint32_t parent_inode_no = 0;
+
+    // 去掉开头的 '/' 后，就没其他字符了，那么就是 '/' 了
+    if(sub_path[0] == 0) { return 0; }
 
     char name[MAX_FILE_NAME_LEN] = {0};
-
     sub_path = path_parse(sub_path, name);
-    // name 是分析出来的前面一段路径
+
     while(name[0]) {
-        ASSERT(strlen(search_record->search_path) < 512);
+        // 记录一下当前处理的路径是什么
         strcat(search_record->search_path, "/");
         strcat(search_record->search_path, name);
+        ASSERT(strlen(search_record->search_path) < 512);
 
-        if(search_dir_entry(cur_part, parent_dir, name, &dir_e)) {
-            memset(name, 0, MAX_FILE_NAME_LEN);
-            if(sub_path) {
-                sub_path = path_parse(sub_path, name);
-            }
-            if(FT_DIRECTORY == dir_e.f_type) {
-                parent_inode_no = parent_dir->inode->i_no;
-                dir_close(parent_dir);
-                parent_dir = dir_open(cur_part, dir_e.i_no);
-                search_record->parent_dir = parent_dir;
-                continue;
-            } else if(FT_REGULAR == dir_e.f_type) {
-                // 这里有个 bug，如果 /a/b/c/d 这样的路径，如果存在c，并且是文件，那么就会返回c的 inode
-                search_record->file_type == FT_REGULAR;
-                return dir_e.i_no;
-            }
-        } else {
-            // 路径不存在
+        if(!search_dir_entry(cur_part, parent_dir, name, &dir_e)) {
+            // 没找到该 name，提前终止。
+            // search_record->parent_dir 不关掉，后面创建文件要用
             return -1;
         }
-    }
 
+        // 找到了文件，就结束。有可能是提前结束。先不管。
+        if(FT_REGULAR == dir_e.f_type) {
+            search_record->file_type = FT_REGULAR;
+            return dir_e.i_no;
+        }
+
+        // 目录的情况，继续往下找
+        if(FT_DIRECTORY == dir_e.f_type) {
+            parent_inode_no = parent_dir->inode->i_no;
+            dir_close(parent_dir);
+            parent_dir = dir_open(cur_part, dir_e.i_no);
+            search_record->parent_dir = parent_dir;
+            sub_path = path_parse(sub_path, name);
+            continue;
+        }
+    } 
+
+    // 如果最后找到的是目录，那么会到这里，这个时候要更新一下其父目录
     dir_close(search_record->parent_dir);
     search_record->parent_dir = dir_open(cur_part, parent_inode_no);
     search_record->file_type = FT_DIRECTORY;
     return dir_e.i_no;
-
 }
 
 void filesystem_init() {
@@ -208,8 +234,54 @@ void filesystem_init() {
     sys_free(sb_buf);
 }
 
+int32_t sys_open(const char* pathname, uint8_t flag) {
+    int32_t fd = -1;
+
+    // 先看下该文件是否已经存在
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t inode_no = search_file(pathname, &search_record);
+
+    // 先看一下目录层数对不对
+    if(path_depth_cnt(search_record.search_path) != path_depth_cnt((char*)pathname)) {
+        printk("cannot access %s: Not a directory, subpath %s not exist\n", \
+            pathname, search_record.search_path);
+        dir_close(search_record.parent_dir);
+        return -1;
+    }
+
+    if(inode_no == -1) {
+        // 文件不存在的情况
+        if(flag & O_CREAT) {
+            fd = file_create(search_record.parent_dir, strrchr(pathname, '/') + 1, flag);
+            goto sys_open_ok;
+        }
+        printk("fail to open not exists path %s\n", pathname);
+        goto sys_open_err;
+    }
+
+    // 文件存在的情况
+    if(flag & O_CREAT) {
+        printk("create on already exists path %s\n", pathname);
+        goto sys_open_err;
+    }
+
+    if(FT_DIRECTORY == search_record.file_type) {
+        printk("Is a directory %s\n", pathname);
+        goto sys_open_err;
+    }
+    fd = file_open(inode_no, flag);
+
+sys_open_ok:
+    dir_close(search_record.parent_dir);
+    return fd;
+
+sys_open_err:
+    dir_close(search_record.parent_dir);
+    return -1;    
+}
+
 /*
-int32_t sys_open(const char* pathname, uint8_t flag);
 int32_t sys_close(int32_t fd);
 int32_t sys_write(int32_t fd, const void* buf, uint32_t count);
 int32_t sys_read(int32_t fd, int32_t offset, uint8_t whence);
