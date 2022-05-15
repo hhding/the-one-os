@@ -62,10 +62,11 @@ int32_t get_free_slot_in_global(void) {
 
 int32_t pcb_fd_install(int32_t globa_fd_idx) {
    struct task_struct* cur = running_thread();
-   int32_t fd_idx = 3;
-   for(; fd_idx < MAX_FILES_OPEN_PER_PROC; fd_idx++) {
+   
+   for(int32_t fd_idx = 3; fd_idx < MAX_FILES_OPEN_PER_PROC; fd_idx++) {
       if(cur->fd_table[fd_idx] == -1) {
          cur->fd_table[fd_idx] = globa_fd_idx;
+         return fd_idx;
       }
    }
    printk("exceed max open files_per_proc\n");

@@ -49,7 +49,7 @@ bool search_dir_entry(struct partition* part,
         if(all_blocks[block_idx] == 0) continue;
         disk_read(part->my_disk, all_blocks[block_idx], buf, 1);
         for (uint32_t dir_entry_idx = 0; dir_entry_idx < dir_entry_cnt; dir_entry_idx++) {
-            if(!strcmp(p_de->filename, name)) {
+            if(!strcmp((p_de + dir_entry_idx)->filename, name)) {
                 memcpy(dir_e, p_de + dir_entry_idx, dir_entry_size);
                 sys_free(buf);
                 return true;

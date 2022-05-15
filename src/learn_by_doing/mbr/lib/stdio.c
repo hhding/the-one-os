@@ -36,7 +36,12 @@ int vsprintf(char* buf, const char* format, va_list arg) {
                     buf_ptr += strlen(tmp_ptr);
                     break;
                 case 'd':
-                    itoa(va_arg(arg, int), &buf_ptr, 10);
+                    int32_t arg_int = va_arg(arg, int);
+                    if(arg_int < 0) {
+                        arg_int = 0 - arg_int;
+                        *buf_ptr++ = '-';
+                    }
+                    itoa(arg_int, &buf_ptr, 10);
                     break;
                 case 'x':
                     itoa(va_arg(arg, int), &buf_ptr, 16);

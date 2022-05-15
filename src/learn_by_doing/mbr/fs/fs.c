@@ -12,7 +12,7 @@
 #include "file.h"
 #include "printk.h"
 
-#define FS_MAGIC 0x20220225
+#define FS_MAGIC 0x20220221
 
 struct partition* cur_part;
 
@@ -24,6 +24,7 @@ static void mount_partition(struct partition* part) {
     ASSERT(sb_buf != NULL);
     memset(sb_buf, 0, SECTOR_SIZE);
     disk_read(hd, part->start_lba + 1, sb_buf, 1);
+    cur_part->sb = sb_buf;
 
     part->block_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->block_bitmap_sects * SECTOR_SIZE);
     part->block_bitmap.btmap_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
@@ -73,7 +74,18 @@ void partition_format(struct partition* part) {
     sb->root_inode_no = 0;
     sb->dir_entry_size = sizeof(struct dir_entry);
     printk("%s info:\n", part->name);
-    printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   inode_table_sectors:0x%x\n   data_start_lba:0x%x\n", sb->magic, sb->part_lba_base, sb->sec_cnt, sb->inode_cnt, sb->block_bitmap_lba, sb->block_bitmap_sects, sb->inode_bitmap_lba, sb->inode_bitmap_sects, sb->inode_table_lba, sb->inode_table_sects, sb->data_start_lba);
+    printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   inode_table_sectors:0x%x\n   data_start_lba:0x%x\n", 
+        sb->magic, 
+        sb->part_lba_base, 
+        sb->sec_cnt, 
+        sb->inode_cnt, 
+        sb->block_bitmap_lba, 
+        sb->block_bitmap_sects, 
+        sb->inode_bitmap_lba, 
+        sb->inode_bitmap_sects, 
+        sb->inode_table_lba, 
+        sb->inode_table_sects, 
+        sb->data_start_lba);
     struct disk* hd = part->my_disk;
     disk_write(hd, part->start_lba + 1, sb, 1);
     printk("  super_block_lba:0x%x\n", part->start_lba + 1);
@@ -159,7 +171,7 @@ int32_t path_depth_cnt(char* pathname) {
     return depth;
 }
 
-static int search_file(const char* pathname, struct path_search_record* search_record) {
+static int32_t search_file(const char* pathname, struct path_search_record* search_record) {
     struct dir_entry dir_e;
     struct dir* parent_dir = &root_dir;
     uint32_t parent_inode_no = 0;
@@ -167,8 +179,8 @@ static int search_file(const char* pathname, struct path_search_record* search_r
 
     // 要求 pathname 以 '/' 开头
     ASSERT(pathname[0] == '/');
-    // 先跳过所有的 '/'
-    while(*(sub_path++) == '/');
+    // 先跳过所有的 '/'，第一个必须为 ‘/’，否则第一个跳过的不是 ‘/’，就是错误的。
+    while(*(++sub_path) == '/');
 
     // 最开始的时候是 '/'，根是特殊的，需要手动初始化.
     search_record->parent_dir = &root_dir;
@@ -232,6 +244,13 @@ void filesystem_init() {
         partition_format(part);
     }
     sys_free(sb_buf);
+    mount_partition(part);
+    open_root_dir(cur_part);
+
+    uint32_t fd_idx = 0;
+    for(fd_idx = 0; fd_idx < MAX_FILE_OPEN; fd_idx ++) {
+        file_table[fd_idx++].fd_inode == NULL;
+    }
 }
 
 int32_t sys_open(const char* pathname, uint8_t flag) {
@@ -253,6 +272,7 @@ int32_t sys_open(const char* pathname, uint8_t flag) {
     if(inode_no == -1) {
         // 文件不存在的情况
         if(flag & O_CREAT) {
+            printk("create %s\n", strrchr(pathname, '/') + 1);
             fd = file_create(search_record.parent_dir, strrchr(pathname, '/') + 1, flag);
             goto sys_open_ok;
         }

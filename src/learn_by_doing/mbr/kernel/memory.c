@@ -240,7 +240,7 @@ void* sys_malloc(uint32_t size) {
         // 先找到应该用哪个大小的内存块
         int a_idx;
         for(a_idx = 0; a_idx < DESC_CNT; a_idx++) {
-            if( size < desc[a_idx].block_size ) break;
+            if( size <= desc[a_idx].block_size ) break;
         }
         // 分配内存块
         // 先看一下有没有空闲的
@@ -263,8 +263,8 @@ void* sys_malloc(uint32_t size) {
             }
             intr_set_status(old_status);
         }
-        // 现在取一个
-        b = elem2entry(struct mem_block, free_elem, list_pop(&(desc[a_idx].free_list)));
+        struct list_elem * l = list_pop(&(desc[a_idx].free_list));
+        b = elem2entry(struct mem_block, free_elem, l);
         a = block2arena(b);
         a->cnt--;
         lock_release(&mem_pool->lock);

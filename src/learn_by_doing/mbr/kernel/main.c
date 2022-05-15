@@ -15,6 +15,9 @@
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
+    sys_open("/file1", O_CREAT);
+    sys_open("/file2", O_CREAT);
+    //sys_open("/file1", O_CREAT);
     char* p1 = malloc(63);
     char* p2 = malloc(12);
     printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p2);
