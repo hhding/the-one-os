@@ -36,13 +36,14 @@ class Inode:
     def dents(self):
         for lba in self.sectors:
             if lba > 0:
+                print(f"> Dump Inode dents for inode #{self.inode_no}:")
                 with open(self.disk_path, "rb") as f:
                     f.seek(lba * SECTOR_SIZE)
                     for idx in range(0, SECTOR_SIZE, 24):
                         filename, i_no, f_type = struct.unpack("16sII", f.read(24))
                         if f_type == 0:
                             break
-                        print(i_no, f_type, filename.decode())
+                        print(f">>>> i_no:{i_no}, type:{f_type}, name:{filename.decode()}")
 
 
     def __repr__(self):
@@ -58,13 +59,13 @@ class InodeTable:
         self.fetch_all()
 
     def fetch_all(self):
-        fields = struct.unpack("IIIIIIIIIIIIIIIIII", self.fp.read(18*4))
+        fields = struct.unpack("18I", self.fp.read(18*4))
         inode = Inode(fields, self.path)
         assert inode.inode_no == 0
         self.inodes[inode.inode_no] = inode
 
         while True:
-            fields = struct.unpack("IIIIIIIIIIIIIIIIII", self.fp.read(18*4))
+            fields = struct.unpack("18I", self.fp.read(18*4))
             inode = Inode(fields, self.path)
             if inode.inode_no > 0:
                 if inode.inode_no in self.inodes:
@@ -82,7 +83,7 @@ class InodeTable:
 class SuperBlock:
     sb_size = 13*4
     def __init__(self, data):
-        fields = struct.unpack("IIIIIIIIIIIII", data)
+        fields = struct.unpack("13I", data)
         self.magic = fields[0]
         self.sec_cnt = fields[1]
         self.inode_cnt = fields[2]
@@ -103,7 +104,7 @@ class SuperBlock:
 class Partition:
     table_size = 16
     def __init__(self, index, partition_data, disk_path):
-        fields = struct.unpack("BBBBBBBBII", partition_data)
+        fields = struct.unpack("8BII", partition_data)
         self.bootable = fields[0]
         self.start_head = fields[1] 
         self.start_sec = fields[2] 

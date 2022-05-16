@@ -301,8 +301,25 @@ sys_open_err:
     return -1;    
 }
 
+/* 将文件描述符转化为文件表的下标 */
+static uint32_t fd_local2global(uint32_t local_fd) {
+   struct task_struct* cur = running_thread();
+   int32_t global_fd = cur->fd_table[local_fd];  
+   ASSERT(global_fd >= 0 && global_fd < MAX_FILE_OPEN);
+   return (uint32_t)global_fd;
+} 
+
+int32_t sys_close(int32_t fd) {
+    int32_t ret = -1;
+    if(fd > 2) {
+        uint32_t global_fd = fd_local2global(fd);
+        ret = file_close(&file_table[global_fd]);
+        running_thread()->fd_table[fd] = -1;
+    }
+    return ret;
+}
+
 /*
-int32_t sys_close(int32_t fd);
 int32_t sys_write(int32_t fd, const void* buf, uint32_t count);
 int32_t sys_read(int32_t fd, int32_t offset, uint8_t whence);
 int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence);

@@ -15,8 +15,13 @@
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
-    sys_open("/file1", O_CREAT);
-    sys_open("/file2", O_CREAT);
+    int32_t fd = sys_open("/file4", O_CREAT);
+    if(fd < 0) {
+        printk("open fail\n");
+    } else {
+        printk("close fd: %d\n", fd);
+        sys_close(fd);
+    }
     //sys_open("/file1", O_CREAT);
     char* p1 = malloc(63);
     char* p2 = malloc(12);
@@ -73,7 +78,7 @@ void main()
     // Page Fault
     //*(char*)(0xb00000) = '1';
     //process_execute(u_prog_a, "user_prog_a");
-    //process_execute(u_prog_b, "user_prog_b");
+    process_execute(u_prog_b, "user_prog_b");
     thread_start("k_thread_a", 31, k_thread_a, "hello");
     //thread_start("k_thread_b", 31, k_thread_b, "world");
 
