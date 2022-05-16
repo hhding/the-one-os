@@ -171,10 +171,25 @@ int32_t file_close(struct file* file) {
    return 0;
 }
 
-int32_t file_write(struct file* file, const void* buf, uint32_t count);
+int32_t file_write(struct file* file, const void* buf, uint32_t count) {
+   // 覆盖写入不应该有问题，这里判断需要优化
+   if((file->fd_inode->i_size + count) > (BLOCK_SIZE*140)) {
+      printk("file_write: exceed max file_size 71680 bytes\n");
+      return -1;
+   }
+   uint8_t* io_buf = sys_malloc(BLOCK_BITMAP);
+   if(io_buf == NULL) {
+      printk("file_write: sys_malloc for io_buf failed\n");
+      return -1;
+   }
+
+   // FIXME
+   file->fd_pos;
+}
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
    uint32_t* all_blocks[140];
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
    uint32_t size = count, size_left = count;
+   // FIXME
    return 0;
 }
