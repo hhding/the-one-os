@@ -8,6 +8,7 @@
 #include "file.h"
 #include "printk.h"
 #include "string.h"
+#include "debug.h"
 
 #define MAX_FILE_OPEN 32    // 系统可打开的最大文件数
 
@@ -184,6 +185,7 @@ static int32_t allocate_block() {
 
 static int32_t load_or_allocate_block(struct inode* fd_inode, uint32_t block_idx, char* all_blocks, void* io_buf) {
    int32_t block_lba = all_blocks[block_idx];
+   ASSERT(block_lba >= 0);
    if(block_lba == 0) {
       block_lba = allocate_block();
       if(block_lba == -1) return -1;
@@ -229,8 +231,10 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
 
    uint32_t bytes_written = 0;
    if(start_sec == end_sec) {
+      printk("same sec\n");
       load_or_allocate_block(file->fd_inode, start_sec, all_blocks, io_buf);
-      memcpy(io_buf+start_offset, buf, count);
+      printk("do memcopy\n");
+      memcpy(io_buf + start_offset, buf, count);
       disk_write(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
       bytes_written = count;
    } else {
@@ -240,7 +244,7 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
       memcpy(io_buf+start_offset, buf, BLOCK_SIZE - start_offset);
       disk_write(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
 
-      bytes_written = start_offset;
+      bytes_written = BLOCK_SIZE - start_offset;
       for(int32_t idx = start_sec + 1; idx < end_sec; idx++) {
          load_or_allocate_block(file->fd_inode, idx, all_blocks, io_buf);
          memcpy(io_buf, buf + bytes_written, BLOCK_SIZE);
@@ -263,10 +267,77 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
    if(file->fd_pos > file->fd_inode->i_size)  file->fd_inode->i_size = file->fd_pos;
    return bytes_written;
 }
+
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
-   uint32_t* all_blocks[140];
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
-   uint32_t size = count, size_left = count;
-   // FIXME
-   return 0;
+   if(io_buf == NULL) {
+      printk("file_write: sys_malloc for io_buf failed\n");
+      goto file_read_error;
+   }
+
+   uint32_t size = count, size_left;
+
+   if(count < 0) return -1;
+
+   if(file->fd_pos > file->fd_inode->i_size) return -1;
+   if(file->fd_pos + count > file->fd_inode->i_size) {
+      size = file->fd_inode->i_size - file->fd_pos;
+   }
+   if(size == 0) return 0;
+
+   uint32_t start_sec = file->fd_pos / BLOCK_SIZE;
+   uint32_t start_offset = file->fd_pos % BLOCK_SIZE;
+   uint32_t end_sec = (file->fd_pos + size) / BLOCK_SIZE;
+   uint32_t end_offset = (file->fd_pos + size) % BLOCK_SIZE;
+   uint32_t* all_blocks = (uint32_t*)sys_malloc(BLOCK_BITMAP + 48);
+   if(all_blocks == NULL) {
+      printk("file_write: sys_malloc for all_blocks failed\n");
+      goto file_read_error;
+   }
+   int32_t block_lba = -1;
+
+   for(int i = 0; i < 12; i++) {
+      all_blocks[i] == file->fd_inode->i_sectors[i];
+   }
+
+   if(end_sec > 12) {
+      block_lba = file->fd_inode->i_sectors[12];
+      if(block_lba == 0) {
+         memset(all_blocks + 12, 0, BLOCK_SIZE);
+      } else 
+         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, BLOCK_SIZE);
+   }
+
+   int32_t bytes_read = 0;
+   if(start_sec == end_sec) {
+      disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
+      memcpy(buf, io_buf+start_offset, size);
+      return size;
+   } else {
+      // 跨扇区的情况
+      // 先处理第一个扇区
+      disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
+      memcpy(buf, io_buf + start_offset, BLOCK_SIZE - start_offset);
+      bytes_read = BLOCK_SIZE - start_offset;
+
+      for(int32_t idx = start_sec + 1; idx < end_sec; idx++) {
+         disk_read(cur_part->my_disk, all_blocks[idx], io_buf, 1);
+         memcpy(buf + bytes_read, io_buf, BLOCK_SIZE);
+         bytes_read += BLOCK_SIZE;
+      }
+      // 先处理最后一个扇区
+      disk_read(cur_part->my_disk, all_blocks[end_sec], io_buf, 1);
+      memcpy(buf + bytes_read, io_buf, end_offset);
+      bytes_read += end_offset;
+   }
+
+   sys_free(all_blocks);
+   sys_free(io_buf);
+   file->fd_pos = file->fd_pos + bytes_read;
+   return bytes_read;
+
+file_read_error:
+   if(all_blocks != NULL) sys_free(all_blocks);
+   if(io_buf != NULL) sys_free(io_buf);
+   return -1;
 }

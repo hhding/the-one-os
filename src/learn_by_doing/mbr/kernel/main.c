@@ -15,7 +15,13 @@
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
-    int32_t fd = sys_open("/file4", O_CREAT);
+    int32_t fd = sys_open("/file4", O_RDWR);
+    printk("write to file..\n");
+    printk("%d\n", sys_write(fd, "this is a test", 10));
+    char buf[64] = {0};
+    sys_read(fd, buf, 64);
+    printk("%s\n", buf);
+
     if(fd < 0) {
         printk("open fail\n");
     } else {
