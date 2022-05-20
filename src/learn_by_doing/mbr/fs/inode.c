@@ -8,6 +8,7 @@
 #include "memory.h"
 #include "debug.h"
 #include "file.h"
+#include "printk.h"
 
 #define SECTOR_SIZE 512
 

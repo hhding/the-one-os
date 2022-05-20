@@ -63,6 +63,7 @@ class InodeTable:
         inode = Inode(fields, self.path)
         assert inode.inode_no == 0
         self.inodes[inode.inode_no] = inode
+        print(inode)
 
         while True:
             fields = struct.unpack("18I", self.fp.read(18*4))

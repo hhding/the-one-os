@@ -356,7 +356,7 @@ void sys_free(void* ptr) {
 
 void block_desc_init(struct mem_block_desc* desc_arry) {
     int block_size = 16;
-    for(int i=0; i<DESC_CNT; i++) {
+    for(int i=0; i < DESC_CNT; i++) {
         desc_arry[i].block_size = block_size;
         desc_arry[i].block_per_arena = (PAGE_SIZE - sizeof(struct arena)) / block_size;
         list_init(&desc_arry[i].free_list);
