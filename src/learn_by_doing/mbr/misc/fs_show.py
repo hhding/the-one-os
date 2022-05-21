@@ -25,50 +25,76 @@ def hexdump(file_path, start_addr, line_cnt=1, bytes_per_line=16, show_ascii=Tru
             print("".join(line_info), ascii_data)
 
 class Inode:
-    def __init__(self, fields, disk_path):
+    def __init__(self, part_name, addr, fields, disk_path):
+        self.part_name = part_name
+        self.addr = addr
         self.inode_no = fields[0]
         self.size = fields[1]
         self.open_cnt = fields[2]
         self.write_deny = fields[3]
-        self.sectors = fields[4:-1]
+        self.sectors = fields[4:-2]
         self.disk_path = disk_path
 
     def dents(self):
+        dentries = []
         for lba in self.sectors:
             if lba > 0:
-                print(f"> Dump Inode dents for inode #{self.inode_no}:")
+                # print(f"> Dump Inode dents for inode #{self.inode_no}:")
                 with open(self.disk_path, "rb") as f:
                     f.seek(lba * SECTOR_SIZE)
                     for idx in range(0, SECTOR_SIZE, 24):
-                        filename, i_no, f_type = struct.unpack("16sII", f.read(24))
+                        fields = struct.unpack("16sII", f.read(24))
+                        filename, i_no, f_type = fields
                         if f_type == 0:
                             break
-                        print(f">>>> i_no:{i_no}, type:{f_type}, name:{filename.decode()}")
+                        else:
+                            dentries.append(fields)
+                        # print(f">>>> i_no:{i_no}, type:{f_type}, name:{filename.decode()}")
+        return dentries
 
+    def contents(self):
+        for lba in self.sectors:
+            if lba > 0:
+                with open(self.disk_path, "rb") as f:
+                    f.seek(lba * SECTOR_SIZE)
+                    return f.read(self.size)
+            else:
+                return b''
+
+    def get_sectors(self):
+        return self.sectors
 
     def __repr__(self):
-        return f"Inode<no:{self.inode_no}, size:{self.size},data:{self.sectors}>"
+        return f"Inode<no:{self.inode_no}, {self.part_name} addr:{hex(self.addr)}, size:{self.size}>"
 
 class InodeTable:
-    def __init__(self, file_path, offset):
+    def __init__(self, file_path, part_name, offset):
+        self.inodes = dict()
+        self.part_name = part_name
         self.path = file_path
         self.offset = offset
         self.fp = open(self.path, 'rb')
         self.fp.seek(offset)
-        self.inodes = dict()
         self.fetch_all()
+        self.walked = []
 
     def fetch_all(self):
-        fields = struct.unpack("18I", self.fp.read(18*4))
-        inode = Inode(fields, self.path)
+        inode_size = 19*4
+        inode_addr = self.fp.tell()
+        inode_data = self.fp.read(inode_size)
+        fields = struct.unpack("19I", inode_data)
+        inode = Inode(self.part_name, inode_addr, fields, self.path)
         assert inode.inode_no == 0
         self.inodes[inode.inode_no] = inode
-        print(inode)
+        print(f"{inode}")
 
         while True:
-            fields = struct.unpack("18I", self.fp.read(18*4))
-            inode = Inode(fields, self.path)
+            inode_addr = self.fp.tell()
+            inode_data = self.fp.read(inode_size)
+            fields = struct.unpack("19I", inode_data)
+            inode = Inode(self.part_name, inode_addr, fields, self.path)
             if inode.inode_no > 0:
+                print(f"{inode} {inode.get_sectors()}")
                 if inode.inode_no in self.inodes:
                     print(f"abort on duplicated inode: {inode.inode_no}")
                     return
@@ -76,11 +102,31 @@ class InodeTable:
             else:
                 return
 
-    def walk(self):
-        root_inode = self.inodes[0]
+    def level_print(self, message, level, indent="  "):
+        prefix = indent * level
+        print("walk:"+prefix + message)
+
+    def walk(self, inode_no, is_root=True, level=1):
+        if is_root is True:
+            self.level_print(f"walk on inode {inode_no} as root", level)
+            self.walked = [inode_no]
+
+        dir_inode = self.inodes.get(inode_no)
+        if dir_inode is None:
+            self.level_print(f"bad inode: {inode_no}", level)
+        for filename, i_no, f_type in dir_inode.dents():
+            if i_no in self.walked:
+                continue
+            self.walked.append(i_no)
+            if f_type == 0:
+                break
+            if f_type == 2:
+                self.level_print(f"walk on directory: {filename.decode()}<inode:{i_no}>", level)
+                self.walk(i_no, False, level + 1)
+            else:
+                file_inode = self.inodes.get(i_no, "Bad Inode")
+                self.level_print(f"file {filename.decode()}<inode:{i_no},{file_inode}>", level)
         
-
-
 class SuperBlock:
     sb_size = 13*4
     def __init__(self, data):
@@ -120,7 +166,7 @@ class Partition:
         self.disk_path = disk_path
         self.superblock = None
         self.init_superblock()
-        self.inode_table = InodeTable(disk_path, self.superblock.inode_table_lba*SECTOR_SIZE)
+        self.inode_table = InodeTable(disk_path, self.name, self.superblock.inode_table_lba*SECTOR_SIZE)
 
     def init_superblock(self):
         with open(self.disk_path, "rb") as f:
@@ -138,7 +184,7 @@ class Partition:
         print(f"    inode_bitmap: {sb.inode_bitmap_lba}")
         hexdump(self.disk_path, sb.inode_bitmap_lba*SECTOR_SIZE)
         print(f"    inode_table: {sb.inode_table_lba}")
-        self.inode_table.inodes[0].dents()
+        self.inode_table.walk(0, True, 1)
         print(f"    data: {sb.data_start_lba}")
         print(f"    root_inode: {sb.root_inode_no}")
         print(f"    dir_size: {sb.dir_entry_size}")
@@ -173,6 +219,7 @@ def parse_args():
     parser.add_argument("--part", type=int, default=1)
     parser.add_argument("--show_superblock", action='store_true')
     parser.add_argument("--show_partitions", action='store_true')
+    parser.add_argument("--inode", type=int, default=0)
     return parser.parse_args()
 
 def main():

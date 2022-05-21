@@ -9,6 +9,7 @@
 #include "printk.h"
 #include "string.h"
 #include "debug.h"
+#include "timer.h"
 
 #define MAX_FILE_OPEN 32    // 系统可打开的最大文件数
 
@@ -175,29 +176,28 @@ int32_t file_close(struct file* file) {
 
 static int32_t allocate_block() {
    int32_t block_lba = block_bitmap_alloc(cur_part);
-   if(block_lba == -1) {
-      printk("Out of filesystem block\n");
-      return -1;
-   }
+   ASSERT(block_lba != -1);
    uint32_t block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
    bitmap_sync(cur_part, block_bitmap_idx, BLOCK_BITMAP);
    printk("allocate_block: lba %d\n", block_lba);
    return block_lba;
 }
 
-static int32_t load_or_allocate_block(struct inode* fd_inode, uint32_t block_idx, uint32_t* all_blocks, void* io_buf) {
+static int32_t load_or_alloc_inode_block(struct inode* fd_inode, uint32_t block_idx, uint32_t* all_blocks, void* io_buf) {
    int32_t block_lba = all_blocks[block_idx];
    ASSERT(block_lba >= 0);
    if(block_lba == 0) {
       block_lba = allocate_block();
-      printk("load_or_allocate_block: allocate lba %d\n", block_lba);
-      if(block_lba == -1) return -1;
-      if(block_idx < 12) fd_inode->i_sectors[block_idx] = block_idx;
+      //printk("load_or_allocate_block: allocate lba %d, block_idx: %d\n", block_lba, block_idx);
+      if(block_idx < 12) fd_inode->i_sectors[block_idx] = block_lba;
       all_blocks[block_idx] = block_lba;
       memset(io_buf, 0, BLOCK_SIZE);
+      if(block_idx >= 12) {
+         printk("sync indirect block %d to lba %d\n", block_idx, fd_inode->i_sectors[12]);
+         disk_write(cur_part->my_disk, fd_inode->i_sectors[12], all_blocks + 12, 1);
+      }
    } else {
-      printk("load_or_allocate_block: read lba %d\n", block_lba);
-      disk_read(cur_part->my_disk, block_lba, io_buf, BLOCK_SIZE);
+      disk_read(cur_part->my_disk, block_lba, io_buf, 1);
    }
    return 0;
 }
@@ -224,52 +224,53 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
       all_blocks[i] = file->fd_inode->i_sectors[i];
    }
 
-   if(end_sec > 12) {
-      block_lba = file->fd_inode->i_sectors[12];
-      if(block_lba == 0) {
+   if(end_sec >= 12) {
+      if(file->fd_inode->i_sectors[12] == 0) {
          block_lba = allocate_block();
-         if(block_lba == -1) return -1;
          file->fd_inode->i_sectors[12] = block_lba;
+         printk("allocate new block for indirect: lba: %d\n", file->fd_inode->i_sectors[12]);
          memset(all_blocks + 12, 0, BLOCK_SIZE);
       } else 
-         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, BLOCK_SIZE);
+         //printk("read for indirect: lba: %d\n", file->fd_inode->i_sectors[12]);
+         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, 1);
    }
 
    uint32_t bytes_written = 0;
    if(start_sec == end_sec) {
-      load_or_allocate_block(file->fd_inode, start_sec, all_blocks, io_buf);
+      load_or_alloc_inode_block(file->fd_inode, start_sec, all_blocks, io_buf);
+      // printk("file_write: lba: %d, offset: %d, cnt: %d block0: %d\n", all_blocks[start_sec], start_offset, count, file->fd_inode->i_sectors[0]);
       memcpy(io_buf + start_offset, buf, count);
-      printk("file_write: lba: %d, offset: %d, cnt: %d\n", all_blocks[start_sec], start_offset, count);
       disk_write(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
       bytes_written = count;
    } else {
+      // printk("multi sector, file_write: start: %d end:%d\n", start_sec, end_sec);
       // 跨扇区的情况
       // 先处理第一个扇区
-      load_or_allocate_block(file->fd_inode, start_sec, all_blocks, io_buf);
-      memcpy(io_buf+start_offset, buf, BLOCK_SIZE - start_offset);
+      load_or_alloc_inode_block(file->fd_inode, start_sec, all_blocks, io_buf);
+      memcpy(io_buf + start_offset, buf, BLOCK_SIZE - start_offset);
       disk_write(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
 
       bytes_written = BLOCK_SIZE - start_offset;
       for(int32_t idx = start_sec + 1; idx < end_sec; idx++) {
-         load_or_allocate_block(file->fd_inode, idx, all_blocks, io_buf);
+         load_or_alloc_inode_block(file->fd_inode, idx, all_blocks, io_buf);
          memcpy(io_buf, buf + bytes_written, BLOCK_SIZE);
          disk_write(cur_part->my_disk, all_blocks[idx], io_buf, 1);
          bytes_written += BLOCK_SIZE;
       }
       // 先处理最后一个扇区
-      load_or_allocate_block(file->fd_inode, end_sec, all_blocks, io_buf);
+      load_or_alloc_inode_block(file->fd_inode, end_sec, all_blocks, io_buf);
       memcpy(io_buf, buf + bytes_written, end_offset);
       disk_write(cur_part->my_disk, all_blocks[end_sec], io_buf, 1);
       bytes_written += end_offset;
    }
 
-   if(file->fd_inode->i_sectors[12] !=0) disk_write(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, BLOCK_SIZE);
+   file->fd_pos = file->fd_pos + bytes_written;
+   if(file->fd_pos > file->fd_inode->i_size) file->fd_inode->i_size = file->fd_pos;
+   //printk("file_write: inode: %d, block0: %d, size: %d\n", file->fd_inode->i_no, file->fd_inode->i_sectors[0], file->fd_inode->i_size);
    inode_sync(cur_part, file->fd_inode, io_buf);
    sys_free(all_blocks);
    sys_free(io_buf);
 
-   file->fd_pos = file->fd_pos + bytes_written;
-   if(file->fd_pos > file->fd_inode->i_size) file->fd_inode->i_size = file->fd_pos;
    return bytes_written;
 }
 
@@ -288,6 +289,8 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
    if(file->fd_pos + count > file->fd_inode->i_size) {
       size = file->fd_inode->i_size - file->fd_pos;
    }
+
+   // printk("file_read: ino: %d, pos: %d, file_size:%d, size: %d\n", file->fd_inode->i_no, file->fd_pos, file->fd_inode->i_size, size);
    if(size == 0) return 0;
 
    uint32_t start_sec = file->fd_pos / BLOCK_SIZE;
@@ -295,6 +298,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
    uint32_t end_sec = (file->fd_pos + size) / BLOCK_SIZE;
    uint32_t end_offset = (file->fd_pos + size) % BLOCK_SIZE;
    uint32_t* all_blocks = (uint32_t*)sys_malloc(BLOCK_SIZE + 48);
+
    if(all_blocks == NULL) {
       printk("file_write: sys_malloc for all_blocks failed\n");
       goto file_read_error;
@@ -302,7 +306,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
    int32_t block_lba = -1;
 
    for(int i = 0; i < 12; i++) {
-      all_blocks[i] == file->fd_inode->i_sectors[i];
+      all_blocks[i] = file->fd_inode->i_sectors[i];
    }
 
    if(end_sec > 12) {
@@ -310,11 +314,12 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       if(block_lba == 0) {
          memset(all_blocks + 12, 0, BLOCK_SIZE);
       } else 
-         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, BLOCK_SIZE);
+         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, 1);
    }
 
    int32_t bytes_read = 0;
    if(start_sec == end_sec) {
+      // printk("file_read: %d -> %d\n", start_sec, all_blocks[start_sec]);
       disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
       memcpy(buf, io_buf+start_offset, size);
       return size;

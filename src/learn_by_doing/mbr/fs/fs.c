@@ -350,8 +350,31 @@ int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
     uint32_t _fd = fd_local2global(fd);
     return file_read(&file_table[_fd], buf, count);
 }
+
+int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence) {
+    if(fd < 0) {
+        printk("sys_lseek: fd error\n");
+        return -1;
+    }
+    uint32_t _fd = fd_local2global(fd);
+    struct file* pf = &file_table[_fd]; 
+    switch (whence)
+    {
+    case SEEK_SET:
+        pf->fd_pos = offset;
+        break;
+    case SEEK_CUR:
+        pf->fd_pos += offset;
+        break;
+    case SEEK_END:
+        pf->fd_pos = pf->fd_inode->i_size;
+        break;
+    }
+    if(pf->fd_pos < 0) pf->fd_pos = 0;
+    return pf->fd_pos;
+}
+
 /*
-int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence);
 int32_t sys_unlink(const char* pathname);
 int32_t sys_mkdir(const char* pathname);
 struct dir_entry* sys_opendir(const char* pathname);
@@ -361,5 +384,3 @@ char* sys_getcwd(char* buf, uint32_t size);
 int32_t sys_chdir(const char* path);
 int32_t sys_stat(const char* path, struct stat* buf);
 */
-
-

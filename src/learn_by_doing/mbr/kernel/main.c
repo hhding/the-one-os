@@ -16,12 +16,22 @@ int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
     int32_t fd;
-    fd = sys_open("/file4", O_CREAT);
+    /*
+    fd = sys_open("/file3", O_CREAT);
+    if(fd > 0) sys_close(fd);
+    */
+    char* data = sys_malloc(4096);
+    for(int i=0; i< 4096; i++) {
+        data[i] = i % 58 + 'A';
+    }
+    fd = sys_open("/file3", O_RDWR);
+    for(int i = 0; i < 6; i++) {
+        sys_write(fd, data, 4096);
+    }
     sys_close(fd);
-    fd = sys_open("/file4", O_RDWR);
-    printk("data written to %d, size: %d\n", fd, sys_write(fd, "this is a test", 10));
     char buf[64] = {0};
-    sys_read(fd, buf, 64);
+    fd = sys_open("/file3", O_RDONLY);
+    sys_read(fd, buf, 130);
     printk("got read buffer: %s\n", buf);
 
     if(fd < 0) {

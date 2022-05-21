@@ -74,6 +74,9 @@ void inode_sync(struct partition* part, struct inode* inode, void* io_buf) {
     char* inode_buf = (char*)io_buf;
     disk_read(part->my_disk, inode_pos.sec_lba, inode_buf, sec_cnt);
     memcpy(inode_buf + inode_pos.sec_offset, &inode_ondisk, sizeof(struct inode));
+    //printk("inode_sync: sync inode: %d to addr: 0x%x\n", inode_ondisk.i_no, inode_pos.sec_lba * 512 + inode_pos.sec_offset);
+    //struct inode* inode_ptr = (struct inode*)(inode_buf + inode_pos.sec_offset);
+    //printk("inode: %d size: %d, block0: %d\n", inode_ptr->i_no, inode_ptr->i_size, inode_ptr->i_sectors[0]);
     disk_write(part->my_disk, inode_pos.sec_lba, inode_buf, sec_cnt);
 }
 
