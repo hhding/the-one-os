@@ -90,12 +90,14 @@ uint32_t allocate_part_block(struct partition* part, void* io_buf) {
     return block_lba;
 }
 
+// 从 parent_dir 找到空闲目录项，并且写到硬盘
 bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf) {
     struct inode* parent_inode = parent_dir->inode;
     struct dir_entry* dir_e = (struct dir_entry*)io_buf;
     int32_t block_lba;
     int32_t dir_entry_idx, idx;
 
+    // 先从前面 12 个 direct block 里面找
     for (idx = 0; idx < 12; idx++) {
         block_lba = parent_inode->i_sectors[idx];
         if(block_lba == 0) {
@@ -106,7 +108,8 @@ bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf
         if(dir_entry_idx != -1) goto do_sync_dir_entry;
     }
 
-    block_lba = parent_inode->i_sectors[idx];
+    // 加载 128 个 indirect block
+    block_lba = parent_inode->i_sectors[12];
     if(block_lba == 0) {
         block_lba = allocate_part_block(cur_part, io_buf);
         parent_inode->i_sectors[idx] = block_lba;
@@ -114,6 +117,7 @@ bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf
 
     uint32_t tier2_block_idx[128] = {0};
     disk_read(cur_part->my_disk, block_lba, tier2_block_idx, 1);
+    // 在 128 个 indirect block里面找
     for (idx = 0; idx < 128; idx++) {
         block_lba = tier2_block_idx[idx];
         if(block_lba == 0) {
@@ -130,6 +134,8 @@ bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf
 do_sync_dir_entry:
     memcpy(dir_e + dir_entry_idx, p_de, cur_part->sb->dir_entry_size);
     disk_write(cur_part->my_disk, block_lba, io_buf, 1);
+    // 如果分配的目录项是原先删除的目录项，那么这里就不应该加。
+    // 所以这里是不对的。FIXME
     parent_inode->i_size += cur_part->sb->dir_entry_size;
     return true;
 }

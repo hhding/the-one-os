@@ -19,7 +19,10 @@ void k_thread_a(void * arg) {
     /*
     fd = sys_open("/file3", O_CREAT);
     if(fd > 0) sys_close(fd);
+    sys_unlink("/file4");
     */
+    // sys_mkdir("/hdir1");
+
     char* data = sys_malloc(4096);
     for(int i=0; i< 4096; i++) {
         data[i] = i % 58 + 'A';

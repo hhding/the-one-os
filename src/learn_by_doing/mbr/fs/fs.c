@@ -186,6 +186,7 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
     search_record->parent_dir = &root_dir;
     search_record->file_type = FT_DIRECTORY;
     search_record->search_path[0] = 0;
+    search_record->early_exit = 0;
 
     // 去掉开头的 '/' 后，就没其他字符了，那么就是 '/' 了
     if(sub_path[0] == 0) { return 0; }
@@ -208,7 +209,7 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
         // 找到了文件，就结束。有可能是提前结束。先不管。
         if(FT_REGULAR == dir_e.f_type) {
             search_record->file_type = FT_REGULAR;
-            return dir_e.i_no;
+            goto search_file_match;
         }
 
         // 目录的情况，继续往下找
@@ -226,7 +227,14 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
     dir_close(search_record->parent_dir);
     search_record->parent_dir = dir_open(cur_part, parent_inode_no);
     search_record->file_type = FT_DIRECTORY;
-    return dir_e.i_no;
+
+search_file_match:
+    if(path_depth_cnt(search_record->search_path) == path_depth_cnt((char*)pathname)) {
+        return dir_e.i_no;
+    } else {
+        search_record->early_exit = 1;
+        return -1;
+    }
 }
 
 void filesystem_init() {
@@ -262,7 +270,7 @@ int32_t sys_open(const char* pathname, uint8_t flag) {
     int32_t inode_no = search_file(pathname, &search_record);
 
     // 先看一下目录层数对不对
-    if(path_depth_cnt(search_record.search_path) != path_depth_cnt((char*)pathname)) {
+    if(search_record.early_exit == 1) {
         printk("cannot access %s: Not a directory, subpath %s not exist\n", \
             pathname, search_record.search_path);
         dir_close(search_record.parent_dir);
@@ -374,13 +382,322 @@ int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence) {
     return pf->fd_pos;
 }
 
-/*
-int32_t sys_unlink(const char* pathname);
-int32_t sys_mkdir(const char* pathname);
-struct dir_entry* sys_opendir(const char* pathname);
-void sys_rewinddir(struct dir* dir);
-int32_t sys_rmdir(const char* pathname);
-char* sys_getcwd(char* buf, uint32_t size);
-int32_t sys_chdir(const char* path);
-int32_t sys_stat(const char* path, struct stat* buf);
-*/
+int32_t sys_unlink(const char* pathname) {
+    // 先看下该文件是否已经存在
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t inode_no = search_file(pathname, &search_record);
+    ASSERT(inode_no != 0);
+    if(inode_no == -1) {
+        printk("sys_unlink: file %s not found\n", pathname);
+        goto sys_unlink_error;
+    }
+
+    if(search_record.early_exit == 1) {
+        printk("sys_unlink: cannot access %s: Not a directory, subpath %s not exist\n", \
+            pathname, search_record.search_path);
+        goto sys_unlink_error;
+    }
+
+    if(search_record.file_type == FT_DIRECTORY) {
+        printk("sys_unlink: cant unlink directory, use rmdir() instead\n");
+        goto sys_unlink_error;
+    }
+
+    uint32_t file_idx = 0;
+    for(file_idx = 0; file_idx < MAX_FILE_OPEN; file_idx++) {
+        if(file_table[file_idx].fd_inode != NULL && (uint32_t)inode_no == file_table[file_idx].fd_inode->i_no) {
+            printk("sys_unlink: file %s is in use\n");
+            goto sys_unlink_error;
+        }
+    }
+    void* io_buf = sys_malloc(SECTOR_SIZE * 2);
+    if(io_buf == NULL) {
+        printk("sys_unlink: malloc for io_buf failed\n");
+        goto sys_unlink_error;
+    }
+
+    struct dir* parent_dir = search_record.parent_dir;
+    delete_dir_entry(cur_part, parent_dir, inode_no, io_buf);
+    inode_release(cur_part, inode_no);
+    sys_free(io_buf);
+    dir_close(search_record.parent_dir);
+    return 0;
+
+sys_unlink_error:
+    dir_close(search_record.parent_dir);
+    return -1;
+}
+
+int32_t alloc_directory_inode(struct inode* dir_inode, int32_t parent_inode_no, void* io_buf) {
+    int32_t inode_no = inode_bitmap_alloc(cur_part);
+    if(inode_no == -1) {
+        printk("sys_mkdir: allocate inode failed\n");
+        return -1;
+    }
+    memset(io_buf, 0, BLOCK_SIZE);
+    bitmap_sync(cur_part, inode_no, INODE_BITMAP);
+
+    // allocate_block 已经包含了 bitmap_sync
+    int32_t block_lba = allocate_block();
+    if(block_lba == -1) {
+        printk("sys_mkdir: allocate block failed\n");
+        return -1;
+    }
+
+    memset(io_buf, 0, BLOCK_SIZE);
+    struct dir_entry* p_de = (struct dir_entry*)io_buf;
+    memcpy(p_de->filename, ".", 1);
+    p_de->i_no = inode_no;
+    p_de->f_type = FT_DIRECTORY;
+    p_de++;
+
+    memcpy(p_de->filename, "..", 2);
+    p_de->i_no = parent_inode_no;
+    p_de->f_type = FT_DIRECTORY;
+    //printk("alloc_directory_inode: write to %d\n", block_lba);
+    disk_write(cur_part->my_disk, block_lba, io_buf, 1);
+
+    inode_init(inode_no, dir_inode);
+    dir_inode->i_sectors[0] = block_lba;
+    dir_inode->i_size = 2 * cur_part->sb->dir_entry_size;
+
+    memset(io_buf, 0, BLOCK_SIZE);
+    inode_sync(cur_part, dir_inode, io_buf);
+
+    return inode_no;
+}
+
+int32_t sys_mkdir(const char* pathname) {
+    int rollback_step = 0;
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t inode_no = search_file(pathname, &search_record);
+
+    void *io_buf = sys_malloc(BLOCK_SIZE * 2);
+    if(io_buf == NULL) {
+        dir_close(search_record.parent_dir);
+        return -1;
+    }
+    if(search_record.early_exit == 1) {
+        printk("sys_mkdir: cannot mkdir %s: Not a directory, subpath %s not exist\n", \
+            pathname, search_record.search_path);
+        goto sys_mkdir_rollback;
+    }
+
+    if(inode_no != -1) {
+        printk("sys_mkdir: path %s already exists\n", pathname);
+        goto sys_mkdir_rollback;
+    }
+
+    struct dir* parent_dir = search_record.parent_dir;
+    char* dirname = strrchr(pathname, '/') + 1;
+
+    struct inode new_dir_inode;
+    memset(io_buf, 0, BLOCK_SIZE * 2);
+    inode_no = alloc_directory_inode(&new_dir_inode, parent_dir->inode->i_no, io_buf);
+    if( inode_no == -1) {
+        printk("sys_mkdir: alloc_directory_inode failed\n");
+        rollback_step = 1;
+        goto sys_mkdir_rollback;
+    }
+
+    struct dir_entry new_dir_entry;
+    memset(&new_dir_entry, 0, sizeof(struct dir_entry));
+    create_dir_entry(dirname, inode_no, FT_DIRECTORY, &new_dir_entry);
+
+    memset(io_buf, 0, BLOCK_SIZE * 2);
+    if(!sync_dir_entry(parent_dir, &new_dir_entry, io_buf)){
+        printk("sys_mkdir: sync_dir_entry to disk failed\n");
+        rollback_step = 2;
+        goto sys_mkdir_rollback;
+    }
+
+    memset(io_buf, 0, BLOCK_SIZE * 2);
+    inode_sync(cur_part, parent_dir->inode, io_buf);
+
+    sys_free(io_buf);
+    dir_close(search_record.parent_dir);
+    return 0;
+
+sys_mkdir_rollback:
+    switch (rollback_step) {
+        case 2:
+            bitmap_set(&cur_part->inode_bitmap, inode_no, 0);
+        case 1:
+            dir_close(search_record.parent_dir);
+            break;
+    }
+    sys_free(io_buf);
+    return -1;
+}
+
+struct dir* sys_opendir(const char* name) {
+    ASSERT(strlen(name) < MAX_PATH_LEN);
+    if(name[0] == '/' && (name[1] == 0 || name[1] == '.')) {
+        return &root_dir;
+    }
+
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t inode_no = search_file(name, &search_record);
+    struct dir* ret = NULL;
+    if(inode_no == -1) {
+        printk("path %s not exists\n", name);
+        goto sys_opendir_out;
+    }
+    if(search_record.file_type == FT_REGULAR) {
+        printk("%s is regular file\n", name);
+        goto sys_opendir_out;
+    }
+    if(search_record.file_type == FT_DIRECTORY) {
+        ret = dir_open(cur_part, inode_no);
+        goto sys_opendir_out;
+    }
+
+sys_opendir_out:
+    dir_close(search_record.parent_dir);
+    return ret;
+}
+
+int32_t sys_closedir(struct dir* dir) {
+    int32_t ret = -1;
+    if(dir != NULL) {
+        dir_close(dir);
+        ret = 0;
+    }
+    return ret;
+}
+
+struct dir_entry* sys_readdir(struct dir* dir) {
+    ASSERT(dir != NULL);
+    return dir_read(dir);
+}
+
+void sys_rewinddir(struct dir* dir) {
+    dir->dir_pos = 0;
+}
+
+int32_t sys_rmdir(const char* pathname) {
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t inode_no = search_file(pathname, &search_record);
+    ASSERT(inode_no != 0);
+    struct dir* dir = NULL;
+    int32_t retval = -1;
+    if(inode_no == -1) {
+        printk("path %s not exists\n", pathname);
+        goto sys_rmdir_out;
+    }
+    if(search_record.file_type == FT_REGULAR) {
+        printk("%s is regular file\n", pathname);
+        goto sys_rmdir_out;
+    }
+    if(search_record.file_type == FT_DIRECTORY) {
+        dir = dir_open(cur_part, inode_no);
+        if(dir_is_empty(dir)) {
+            if(!dir_remove(search_record.parent_dir, dir)) {
+                retval = 0;
+            }
+        } else {
+            printk("dir %s is not empty\n", pathname);
+        }
+        dir_close(dir);
+    }
+
+sys_rmdir_out:
+    dir_close(search_record.parent_dir);
+    return retval;
+}
+
+static uint32_t get_parent_dir_inode_no(uint32_t cur_dir_inode_no, void* io_buf) {
+    struct inode* cur_dir_inode = inode_open(cur_part, cur_dir_inode_no);
+    ASSERT(cur_dir_inode->i_sectors[0] != 0);
+    disk_read(cur_part->my_disk, cur_dir_inode->i_sectors[0], io_buf, 1);
+    struct dir_entry* dir_e = (struct dir_entry*)io_buf;
+    ASSERT(dir_e[1].i_no < 4096 && dir_e[1].f_type == FT_DIRECTORY);
+    return dir_e[1].i_no;
+}
+
+static int32_t get_child_dir_name(uint32_t p_inode_no, uint32_t c_inode_no, char* path, void* io_buf) {
+    struct dir* dir = dir_open(cur_part, p_inode_no);
+    struct dir_entry* dir_e = dir_read(dir);
+    while(dir_e != NULL) {
+        if(dir_e->i_no == c_inode_no) {
+            strcat(path, "/");
+            strcat(path, dir_e->filename);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+char* sys_getcwd(char* buf, uint32_t size) {
+    ASSERT(buf != NULL);
+
+    struct task_struct* cur = running_thread();
+    int32_t child_inode_no = cur->cwd_inode_nr;
+    ASSERT(child_inode_no >= 0 && child_inode_no < 4096);
+    if(child_inode_no == 0) {
+        buf[0] = '/';
+        buf[1] = 0;
+        return buf;
+    }
+
+    void* io_buf = sys_malloc(SECTOR_SIZE);
+    ASSERT(io_buf != NULL);
+    char full_path_reverse[MAX_FILE_NAME_LEN] = {0};
+
+    uint32_t parent_inode_no;
+    while(child_inode_no) {
+        parent_inode_no = get_parent_dir_inode_no(child_inode_no, io_buf);
+        if(get_child_dir_name(parent_inode_no, child_inode_no, full_path_reverse, io_buf) == -1) {
+            sys_free(io_buf);
+            return -1;
+        }
+        child_inode_no = parent_inode_no;
+    }
+    ASSERT(strlen(full_path_reverse) <= size);
+    // 路径是反的，要反过来。
+    char* last_slash;
+    while(last_slash = strrchr(full_path_reverse, '/')) {
+        strcpy(buf + strlen(buf), last_slash);
+        *last_slash = 0;
+    }
+    sys_free(io_buf);
+    return buf;
+}
+
+int32_t sys_chdir(const char* path) {
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t ret = -1;
+    int32_t inode_no = search_file(path, &search_record);
+    if(inode_no != -1 && search_record.file_type == FT_DIRECTORY) {
+        running_thread()->cwd_inode_nr = inode_no;
+        ret = 0;
+    } else {
+        printk("sys_chdir: path %s not exist or not a directory\n", path);
+    }
+    dir_close(search_record.parent_dir);
+    return ret;
+}
+
+int32_t sys_stat(const char* path, struct stat* buf) {
+    struct path_search_record search_record;
+    memset(&search_record, 0, sizeof(struct path_search_record));
+    int32_t ret = -1;
+    int32_t inode_no = search_file(path, &search_record);
+    if(inode_no != -1 && search_record.early_exit == 0) {
+        struct inode* obj_inode = inode_open(cur_part, inode_no);
+        buf->st_size = obj_inode->i_size;
+        inode_close(obj_inode);
+        buf->st_filetype = search_record.file_type;
+        buf->st_no = inode_no;
+        ret = 0;
+    } else {
+        printk("sys_stat: %s not found\n", path);
+    }
+    dir_close(search_record.parent_dir);
+    return ret;
+}

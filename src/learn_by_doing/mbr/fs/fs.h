@@ -31,6 +31,7 @@ struct path_search_record {
     char search_path[MAX_PATH_LEN];
     struct dir* parent_dir;
     enum file_types file_type;
+    uint8_t early_exit;
 };
 
 struct stat {

@@ -42,13 +42,12 @@ class Inode:
                 # print(f"> Dump Inode dents for inode #{self.inode_no}:")
                 with open(self.disk_path, "rb") as f:
                     f.seek(lba * SECTOR_SIZE)
-                    for idx in range(0, SECTOR_SIZE, 24):
+                    for idx in range(0, self.size+1, 24):
                         fields = struct.unpack("16sII", f.read(24))
                         filename, i_no, f_type = fields
                         if f_type == 0:
-                            break
-                        else:
-                            dentries.append(fields)
+                            continue
+                        dentries.append(fields)
                         # print(f">>>> i_no:{i_no}, type:{f_type}, name:{filename.decode()}")
         return dentries
 
@@ -88,19 +87,20 @@ class InodeTable:
         self.inodes[inode.inode_no] = inode
         print(f"{inode}")
 
-        while True:
+        for i in range(128):
             inode_addr = self.fp.tell()
             inode_data = self.fp.read(inode_size)
             fields = struct.unpack("19I", inode_data)
             inode = Inode(self.part_name, inode_addr, fields, self.path)
             if inode.inode_no > 0:
-                print(f"{inode} {inode.get_sectors()}")
+                print(f"{i}, {inode} {inode.get_sectors()}")
                 if inode.inode_no in self.inodes:
                     print(f"abort on duplicated inode: {inode.inode_no}")
-                    return
-                self.inodes[inode.inode_no] = inode
-            else:
-                return
+                    #return
+                else:
+                    self.inodes[inode.inode_no] = inode
+            #else:
+            #    return
 
     def level_print(self, message, level, indent="  "):
         prefix = indent * level
@@ -114,6 +114,7 @@ class InodeTable:
         dir_inode = self.inodes.get(inode_no)
         if dir_inode is None:
             self.level_print(f"bad inode: {inode_no}", level)
+
         for filename, i_no, f_type in dir_inode.dents():
             if i_no in self.walked:
                 continue

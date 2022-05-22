@@ -174,7 +174,7 @@ int32_t file_close(struct file* file) {
    return 0;
 }
 
-static int32_t allocate_block() {
+int32_t allocate_block() {
    int32_t block_lba = block_bitmap_alloc(cur_part);
    ASSERT(block_lba != -1);
    uint32_t block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
