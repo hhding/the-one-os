@@ -31,6 +31,8 @@ uint32_t allocate_pid() {
     return pid;
 }
 
+uint32_t fork_pid() { return allocate_pid();}
+
 struct task_struct* running_thread() {
     uint32_t esp;
     // 因为在一个页里面，所以找到栈对齐就好了

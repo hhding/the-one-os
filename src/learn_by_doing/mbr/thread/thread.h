@@ -6,6 +6,7 @@
 #include "bitmap.h"
 
 #define MAX_FILES_OPEN_PER_PROC 64
+typedef int16_t pid_t;
 
 // 定义了一个函数指针
 // 函数指针指向一个函数
@@ -93,6 +94,7 @@ struct task_struct {
    int32_t fd_table[MAX_FILES_OPEN_PER_PROC];
    uint32_t cwd_inode_nr;
    uint32_t pid;
+   uint32_t parent_pid;
    uint32_t stack_magic;     // 用这串数字做栈的边界标记,用于检测栈的溢出
 };
 
@@ -108,7 +110,7 @@ void thread_init(void);
 void thread_block(enum task_status status);
 void thread_unblock(struct task_struct* pthread);
 void thread_yield(void);
-uint32_t allocate_pid(void);
 uint32_t sys_getpid(void);
+uint32_t fork_pid(void);
 #endif
 

@@ -140,8 +140,8 @@ p_mode_start:
     jmp SELECTOR_CODE:enter_kernel
 
 enter_kernel:
-    call kernel_init
     mov esp, 0xc009f000
+    call kernel_init
     jmp KERNEL_ENTRY_POINT
 
 

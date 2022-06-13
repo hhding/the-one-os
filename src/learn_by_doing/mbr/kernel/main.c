@@ -21,7 +21,7 @@ void k_thread_a(void * arg) {
     if(fd > 0) sys_close(fd);
     sys_unlink("/file4");
     */
-    // sys_mkdir("/hdir1");
+    //sys_mkdir("/hdir1");
 
     char* data = sys_malloc(4096);
     for(int i=0; i< 4096; i++) {
