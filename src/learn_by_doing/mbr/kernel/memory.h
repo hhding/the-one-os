@@ -48,7 +48,7 @@ void malloc_init(void);
 uint32_t* pte_ptr(uint32_t vaddr);
 uint32_t* pde_ptr(uint32_t vaddr);
 uint32_t addr_v2p(uint32_t vaddr);
-void* get_a_page(enum pool_flags pf, uint32_t vaddr);
+void* get_a_page(enum pool_flags pf, uint32_t vaddr, uint32_t op_bitmap);
 void* get_user_pages(uint32_t pg_cnt);
 void* sys_malloc(uint32_t size);
 void pfree(uint32_t pg_phy_addr);

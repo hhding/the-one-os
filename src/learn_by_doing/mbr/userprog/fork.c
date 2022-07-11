@@ -27,6 +27,31 @@ static int32_t copy_vaddrbitmap(struct task_struct* child_thread, struct task_st
     return 0;
 }
 
+// 将用户空间的数据全部拷贝一份，包括代码，数据和用户空间的栈
+// 以上都是需要单独分配地址和做地址映射的（在 get_a_page 里面实现）
+// 只是不需要对 bitmap 进行更新，因为 bitmap 从父进程已经拷贝过来了。
+static void copy_body_stack3(struct task_struct* child_thread, struct task_struct* parent_thread, void* buf_page) {
+    uint32_t btmp_bytes_len = parent_thread->userprog_vaddr.vaddr_bitmap.btmp_bytes_len;
+    uint8_t* vaddr_btmp = parent_thread->userprog_vaddr.vaddr_bitmap.bits;
+    uint32_t vaddr_start = parent_thread->userprog_vaddr.vaddr_start;
+    uint32_t prog_vaddr = 0;
+
+    for(int idx_byte = 0; idx_byte < btmp_bytes_len; idx_byte++) {
+        if(vaddr_btmp[idx_byte]) {
+            for(int idx_bit = 0; idx_bit < 8; idx_bit++) {
+                if((BITMAP_MASK << idx_bit) & vaddr_btmp[idx_byte]) {
+                    prog_vaddr = (idx_byte * 8 + idx_bit) * PAGE_SIZE + vaddr_start;
+                    memcpy(buf_page, (void *)prog_vaddr, PAGE_SIZE);
+                    page_dir_activate(child_thread);
+                    get_a_page(PF_USER, prog_vaddr, 0);
+                    memcpy((void *)prog_vaddr, buf_page, PAGE_SIZE);
+                    page_dir_activate(parent_thread);
+                }
+            }
+        }
+    }
+}
+
 int32_t copy_process(struct task_struct* child_thread, struct task_struct* parent_thread) {
     // 拷贝进程相关信息
     // 用户态：1. 进程代码，2. 进程数据，3. 进程栈
@@ -40,13 +65,18 @@ int32_t copy_process(struct task_struct* child_thread, struct task_struct* paren
     //     * userprog_vaddr.vaddr_bitmap.bits
     //     * self_kstack，这个当时是分配了一个页的
      
+    void* buf_page = get_kernel_pages(1);
+    if(buf_page == NULL) return -1;
+
     copy_pcb(child_thread, parent_thread);
     child_thread->pgdir = create_page_dir();
     copy_vaddrbitmap(child_thread, parent_thread);
 
-    copy_body_stack3(child_thread, parent_thread);
+    copy_body_stack3(child_thread, parent_thread, buf_page);
     build_child_stack(child_thread);
     update_inode_open_cnts(child_thread);
+
+    mfree_page(PF_KERNEL, buf_page, 1);
     return 0;
 }
 

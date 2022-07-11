@@ -16,6 +16,23 @@ void create_user_vaddr_bitmap(struct task_struct* thread) {
     bitmap_init(&thread->userprog_vaddr.vaddr_bitmap);
 }
 
+// 进程主体包括进程调度信息（pcb），进程内核空间的栈，进程用户空间的栈，进程的代码，数据等。还有 tss。
+// 1. pcb，这个本身没特别好说的，调度依靠 pcb 来确定进程并且分配相应的资源。
+// 2. 所有的调度事件都是由中断触发的，可能是时间中断、网卡中断等等
+//    这意味着用户程序在执行时，其实是无法被中断的，必须要等到某个中断触发才行。
+// 3. 当中断发生时，CPU 执行中断处理之前，会自动保存当前运行进程的上下文。
+//    如果上下文是低级别，那么需要确定高级别的保存地址，这个地址由 tss 的 esp0 来确定。
+//    具体的讲，这个 esp0 指向 pcb 中的 intr_stack ((uint32_t)pcb + page_size)
+//    之后，cpu 开始执行中断处理程序。
+//    然后 cpu 执行 iretd 从中断中返回。
+// 4. 对于 CPU 从中断中返回，在本实现中是很重要的。这里以创建一个用户态进程的角度来做个总览。
+//    背景，创建一个用户态进程，需要准备用户态进程的代码，堆和栈。
+//    iretd 返回到用户态执行代码，至少需要：cs，eip，eflags（代码相关），ss，esp（栈相关）。iretd 会从 intr_stack 恢复以上寄存器。
+//      如果是新进程，需要单独分配内存（pf_user)，然后 esp 指向该地址。
+//      其他寄存器和选择子也同样处理。
+//      问题：esi，edi，ebx，ebp 在 thread_stack 中也有，intr_stack 中也有，是不是重复了？
+
+
 void start_process(void* filename_) {
     struct task_struct* cur = running_thread();
     // 高地址 intr_stack
@@ -32,7 +49,7 @@ void start_process(void* filename_) {
     stack->cs = SELECTOR_U_CODE;
     stack->eflags = (EFLAGS_IOPL_0 | EFLAGS_MBS | EFLAGS_IF_1);
     // 这个是分配给用户态进程的栈空间，会由 iretd 赋值过去
-    stack->esp = (void*)((uint32_t)get_a_page(PF_USER, USER_STACK3_VADDR) + PAGE_SIZE);
+    stack->esp = (void*)((uint32_t)get_a_page(PF_USER, USER_STACK3_VADDR) + PAGE_SIZE, 1);
     stack->ss = SELECTOR_U_DATA;
     // 将以上伪装完毕的中断栈设置为 esp，然后基于这个栈，开始恢复现场。
     asm volatile ("movl %0, %%esp; jmp intr_exit": : "g"(stack) : "memory");

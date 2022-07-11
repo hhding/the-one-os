@@ -2,9 +2,11 @@
 section .text
 global switch_to
 ; switch_to cur, next
+; 调用 switch_to 的时候，当前的栈情况
 ; next      <- 6x4
 ; cur       <- 5x4
 ; ret addr  <- 4x4
+; 调用 switch_to 栈情况
 ; esi       <- 3x4
 ; edi       <- 2x4
 ; ebx       <- 1x4
