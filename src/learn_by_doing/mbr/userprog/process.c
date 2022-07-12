@@ -34,10 +34,13 @@ void create_user_vaddr_bitmap(struct task_struct* thread) {
 //      实际上，中断中 CPU 自动压栈的寄存器就只有指令执行，栈和eflags相关的几个。
 //    从中断退出的角度来看，如果要跳到新进程，那么对于进入中断时候压的内容，要完整的构造一份。
 //    然后将 esp 指向该内容的最低地址，即栈顶，然后执行退出中断的部分代码。后者其实也就是恢复寄存器的内容，然后跳到用户态代码和恢复到用户态栈。
-// 5. switch_to 跟中断栈的关系
-//    thread_create(thread_pcb, function, name)
-//    eip=kernel_thread, func=function, func_args=name
-//    注意，这里有个完整的压栈环境，switch_to 直接跳到 kernel_thread，然后开始执行 function 了。那么中断呢，怎么跳到ring3？
+// 5. process_execute 做为一个进程创建函数，其准备了 switch_to 所需要的环境。但是要注意的是，它并没有跳转去执行新的代码。
+//      实际上，代码要从哪里继续执行，只跟中断栈中的 eip 有关。跟 switch_to 没有关系。所以最终目标是控制中断的 eip。
+//      在下一次中断触发的 switch_to 中，调度到了新进程，其返回地址并不是 schedule，而是 kernel_thread，这是 thread_create 中完成的。
+//      而 kernel_thread 会执行 start_process，后者会伪造中断栈，设置 eip 为执行代码地址。然后跳转到中断退出代码。
+//      thread_create -> 控制 switch_to 去执行 kernel_thread，参数为 start_process。
+//      start_process 伪造中断现场，最终从中断直接跳转到　到用户代码。
+
 
 
 void start_process(void* filename_) {
