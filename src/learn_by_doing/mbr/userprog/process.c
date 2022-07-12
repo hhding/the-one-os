@@ -31,6 +31,13 @@ void create_user_vaddr_bitmap(struct task_struct* thread) {
 //      如果是新进程，需要单独分配内存（pf_user)，然后 esp 指向该地址。
 //      其他寄存器和选择子也同样处理。
 //      问题：esi，edi，ebx，ebp 在 thread_stack 中也有，intr_stack 中也有，是不是重复了？
+//      实际上，中断中 CPU 自动压栈的寄存器就只有指令执行，栈和eflags相关的几个。
+//    从中断退出的角度来看，如果要跳到新进程，那么对于进入中断时候压的内容，要完整的构造一份。
+//    然后将 esp 指向该内容的最低地址，即栈顶，然后执行退出中断的部分代码。后者其实也就是恢复寄存器的内容，然后跳到用户态代码和恢复到用户态栈。
+// 5. switch_to 跟中断栈的关系
+//    thread_create(thread_pcb, function, name)
+//    eip=kernel_thread, func=function, func_args=name
+//    注意，这里有个完整的压栈环境，switch_to 直接跳到 kernel_thread，然后开始执行 function 了。那么中断呢，怎么跳到ring3？
 
 
 void start_process(void* filename_) {
