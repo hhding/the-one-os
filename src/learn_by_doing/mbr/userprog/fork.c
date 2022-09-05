@@ -3,6 +3,13 @@
 #include "interrupt.h"
 #include "thread.h"
 #include "process.h"
+#include "file.h"
+#include "pipe.h"
+#include "string.h"
+#include "debug.h"
+
+
+extern void intr_exit(void);
 
 static void copy_pcb(struct task_struct* child_thread, struct task_struct* parent_thread) {
     // 拷贝进程控制快
@@ -20,10 +27,10 @@ static void copy_pcb(struct task_struct* child_thread, struct task_struct* paren
 static int32_t copy_vaddrbitmap(struct task_struct* child_thread, struct task_struct* parent_thread) {
     uint32_t bitmap_pg_cnt = DIV_ROUND_UP(
         (0xc00000000 - USER_VADDR_START) / PAGE_SIZE / 8, PAGE_SIZE);
-    void* vaddr_btmp = get_kernel_page(bitmap_pg_cnt);
+    void* vaddr_btmp = get_kernel_pages(bitmap_pg_cnt);
     if(vaddr_btmp == NULL) return -1;
-    memcpy(vaddr_btmp, child_thread->userprog_vaddr.bits, bitmap_pg_cnt * PAGE_SIZE);
-    child_thread->userprog_vaddr.bits = vaddr_btmp;
+    memcpy(vaddr_btmp, child_thread->userprog_vaddr.vaddr_bitmap.bits, bitmap_pg_cnt * PAGE_SIZE);
+    child_thread->userprog_vaddr.vaddr_bitmap.bits = vaddr_btmp;
     return 0;
 }
 
@@ -31,12 +38,12 @@ static int32_t copy_vaddrbitmap(struct task_struct* child_thread, struct task_st
 // 以上都是需要单独分配地址和做地址映射的（在 get_a_page 里面实现）
 // 只是不需要对 bitmap 进行更新，因为 bitmap 从父进程已经拷贝过来了。
 static void copy_body_stack3(struct task_struct* child_thread, struct task_struct* parent_thread, void* buf_page) {
-    uint32_t btmp_bytes_len = parent_thread->userprog_vaddr.vaddr_bitmap.btmp_bytes_len;
+    uint32_t btmp_bytes_len = parent_thread->userprog_vaddr.vaddr_bitmap.btmap_bytes_len;
     uint8_t* vaddr_btmp = parent_thread->userprog_vaddr.vaddr_bitmap.bits;
     uint32_t vaddr_start = parent_thread->userprog_vaddr.vaddr_start;
     uint32_t prog_vaddr = 0;
 
-    for(int idx_byte = 0; idx_byte < btmp_bytes_len; idx_byte++) {
+    for(uint32_t idx_byte = 0; idx_byte < btmp_bytes_len; idx_byte++) {
         if(vaddr_btmp[idx_byte]) {
             for(int idx_bit = 0; idx_bit < 8; idx_bit++) {
                 if((BITMAP_MASK << idx_bit) & vaddr_btmp[idx_byte]) {
@@ -47,6 +54,44 @@ static void copy_body_stack3(struct task_struct* child_thread, struct task_struc
                     memcpy((void *)prog_vaddr, buf_page, PAGE_SIZE);
                     page_dir_activate(parent_thread);
                 }
+            }
+        }
+    }
+}
+
+static int32_t build_child_stack(struct task_struct* child_thread) {
+    struct intr_stack* intr0_stack = (struct intr_stack*)((uint32_t)child_thread + PAGE_SIZE + sizeof(struct intr_stack));
+    // fork 的返回值为 0 
+    intr0_stack->eax = 0;
+    // 设置 switch_to 的 ret 代码直接返回到中断退出代码
+    // 因此要设置 thread_stack 压栈的返回地址。
+    // 注意：正常情况下 switch_to 栈底还有两个参数，schedule 函数会处理这两个参数的栈
+    // 我们这里设置的栈就不包括这两个参数的栈了，实际栈为：
+    // ebp <--- esp
+    // ebx
+    // edi
+    // esi
+    // ret address ---> intr_exit
+    // intr0_stack
+    uint32_t *p = (uint32_t*)intr0_stack;
+    *(p-1) = (uint32_t)intr_exit;
+    // 几个寄存器都设置为 0，应该没啥用
+    // *(p-2) = *(p-3) = *(p-4) = *(p-5) = 0;
+    // 设置栈顶 esp, switch_to 依赖这个栈顶恢复数据
+    child_thread->self_kstack = p - 5;
+    return 0;
+}
+
+static void update_inode_open_cnts(struct task_struct* thread) {
+    int32_t global_fd = 0;
+    for(int32_t local_fd = 0; local_fd < MAX_FILES_OPEN_PER_PROC; local_fd++) {
+        global_fd = thread->fd_table[local_fd];
+        ASSERT(global_fd < MAX_FILE_OPEN);
+        if(global_fd != -1) {
+            if(is_pipe(local_fd)) {
+                file_table[global_fd].fd_pos++;
+            } else {
+                file_table[global_fd].fd_inode->i_open_cnt++;
             }
         }
     }
@@ -85,7 +130,7 @@ int32_t copy_process(struct task_struct* child_thread, struct task_struct* paren
 pid_t sys_fork(void) {
     struct task_struct* parent_thread = running_thread();
     ASSERT(parent_thread->pgdir != NULL);
-    struct task_struct* child_thread = get_kernel_page(1);
+    struct task_struct* child_thread = get_kernel_pages(1);
     if(child_thread == NULL) {
         return -1;
     }

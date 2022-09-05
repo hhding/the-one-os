@@ -8,6 +8,8 @@
 #include "debug.h"
 #include "printk.h"
 #include "process.h"
+#include "stdio.h"
+#include "syscall.h"
 
 #define PAGE_SIZE 4096
 
@@ -162,11 +164,23 @@ uint32_t sys_getpid(void) {
     return cur->pid;
 }
 
+void init(void) {
+    uint32_t _pid = fork();
+    if(_pid) {
+        printf("iii I am father:\n");
+        printf("I am father: %d\n", _pid);
+    } else {
+        printf("iii I am child:\n");
+        printf("I am child: %d\n", getpid());
+    }
+    while(1);
+}
 void thread_init(void) {
     printk("thread_init start\n");
     list_init(&thread_ready_list);
     list_init(&thread_all_list);
 
+    process_execute(init, "init");
     make_main_thread();
     idle_thread = thread_start("idle", 10, idle, NULL);
     printk("thread_init done\n");

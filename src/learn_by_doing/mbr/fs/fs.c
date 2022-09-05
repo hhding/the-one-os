@@ -255,10 +255,12 @@ void filesystem_init() {
     mount_partition(part);
     open_root_dir(cur_part);
 
+    /*
     uint32_t fd_idx = 0;
-    for(fd_idx = 0; fd_idx < MAX_FILE_OPEN; fd_idx ++) {
+    while(fd_idx < MAX_FILE_OPEN) {
         file_table[fd_idx++].fd_inode == NULL;
     }
+    */
 }
 
 int32_t sys_open(const char* pathname, uint8_t flag) {
@@ -378,7 +380,7 @@ int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence) {
         pf->fd_pos = pf->fd_inode->i_size;
         break;
     }
-    if(pf->fd_pos < 0) pf->fd_pos = 0;
+    //if(pf->fd_pos < 0) pf->fd_pos = 0;
     return pf->fd_pos;
 }
 
@@ -653,14 +655,14 @@ char* sys_getcwd(char* buf, uint32_t size) {
         parent_inode_no = get_parent_dir_inode_no(child_inode_no, io_buf);
         if(get_child_dir_name(parent_inode_no, child_inode_no, full_path_reverse, io_buf) == -1) {
             sys_free(io_buf);
-            return -1;
+            return NULL;
         }
         child_inode_no = parent_inode_no;
     }
     ASSERT(strlen(full_path_reverse) <= size);
     // 路径是反的，要反过来。
     char* last_slash;
-    while(last_slash = strrchr(full_path_reverse, '/')) {
+    while((last_slash = strrchr(full_path_reverse, '/'))) {
         strcpy(buf + strlen(buf), last_slash);
         *last_slash = 0;
     }

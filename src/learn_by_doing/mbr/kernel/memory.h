@@ -54,5 +54,6 @@ void* sys_malloc(uint32_t size);
 void pfree(uint32_t pg_phy_addr);
 void sys_free(void* ptr);
 void block_desc_init(struct mem_block_desc* desc_arry);
+void mfree_page(enum pool_flags pf, void* _vaddr, uint32_t cnt);
 #endif
 

@@ -29,7 +29,7 @@ int32_t inode_bitmap_alloc(struct partition* part) {
 
 int32_t block_bitmap_alloc(struct partition* part) 
 {
-   uint32_t idx = test_and_set_bitmap(&part->block_bitmap); 
+   int32_t idx = test_and_set_bitmap(&part->block_bitmap); 
    if(idx == -1) return -1;
    return (part->sb->data_start_lba + idx);
 }
@@ -251,7 +251,7 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
       disk_write(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
 
       bytes_written = BLOCK_SIZE - start_offset;
-      for(int32_t idx = start_sec + 1; idx < end_sec; idx++) {
+      for(uint32_t idx = start_sec + 1; idx < end_sec; idx++) {
          load_or_alloc_inode_block(file->fd_inode, idx, all_blocks, io_buf);
          memcpy(io_buf, buf + bytes_written, BLOCK_SIZE);
          disk_write(cur_part->my_disk, all_blocks[idx], io_buf, 1);
@@ -281,9 +281,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       goto file_read_error;
    }
 
-   uint32_t size = count, size_left;
-
-   if(count < 0) return -1;
+   uint32_t size = count;
 
    if(file->fd_pos > file->fd_inode->i_size) return -1;
    if(file->fd_pos + count > file->fd_inode->i_size) {
@@ -330,7 +328,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       memcpy(buf, io_buf + start_offset, BLOCK_SIZE - start_offset);
       bytes_read = BLOCK_SIZE - start_offset;
 
-      for(int32_t idx = start_sec + 1; idx < end_sec; idx++) {
+      for(uint32_t idx = start_sec + 1; idx < end_sec; idx++) {
          disk_read(cur_part->my_disk, all_blocks[idx], io_buf, 1);
          memcpy(buf + bytes_read, io_buf, BLOCK_SIZE);
          bytes_read += BLOCK_SIZE;

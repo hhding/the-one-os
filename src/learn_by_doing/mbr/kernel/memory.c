@@ -137,6 +137,7 @@ int update_thread_bitmap(enum pool_flags pf, uint32_t vaddr) {
     idx = (vaddr - thread_vaddr->vaddr_start) / PAGE_SIZE;
     ASSERT(idx > 0);
     bitmap_set(&thread_vaddr->vaddr_bitmap, idx, 1);
+    return 0;
 }
 
 void* get_a_page(enum pool_flags pf, uint32_t vaddr, uint32_t op_bitmap) {

@@ -59,7 +59,7 @@ void start_process(void* filename_) {
     stack->cs = SELECTOR_U_CODE;
     stack->eflags = (EFLAGS_IOPL_0 | EFLAGS_MBS | EFLAGS_IF_1);
     // 这个是分配给用户态进程的栈空间，会由 iretd 赋值过去
-    stack->esp = (void*)((uint32_t)get_a_page(PF_USER, USER_STACK3_VADDR) + PAGE_SIZE, 1);
+    stack->esp = (void*)((uint32_t)get_a_page(PF_USER, USER_STACK3_VADDR, 1) + PAGE_SIZE);
     stack->ss = SELECTOR_U_DATA;
     // 将以上伪装完毕的中断栈设置为 esp，然后基于这个栈，开始恢复现场。
     asm volatile ("movl %0, %%esp; jmp intr_exit": : "g"(stack) : "memory");
