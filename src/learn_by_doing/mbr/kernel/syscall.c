@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "memory.h"
 #include "fork.h"
+#include "fs.h"
 
 uint32_t getpid(void) {
     return _syscall0(SYS_getpid);
@@ -28,7 +29,7 @@ uint32_t fork(void) {
 void init_syscall() {
     printk("syscall init start\n");
     register_syscall(SYS_getpid, sys_getpid);
-    register_syscall(SYS_write, stdout_write);
+    register_syscall(SYS_write, sys_write);
     register_syscall(SYS_malloc, sys_malloc);
     register_syscall(SYS_free, sys_free);
     register_syscall(SYS_fork, sys_fork);

@@ -337,7 +337,7 @@ int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {
     if(fd == stdout_no) {
         char tmp_buf[1024] = {0};
         memcpy(tmp_buf, buf, count);
-        printk(tmp_buf);
+        stdout_write(tmp_buf);
         return count;
     }
 

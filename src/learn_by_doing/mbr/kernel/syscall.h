@@ -8,7 +8,7 @@
 #define SYS_fork    4
 #define _syscall0(name) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name) : "memory"); _res; })
 #define _syscall1(name, arg1) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name), "b"(arg1) : "memory"); _res; })
-#define _syscall2(name, arg1, arg2) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name), "b"(arg1) : "memory", "c"(arg2) : "memory"); _res; })
+#define _syscall2(name, arg1, arg2) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name), "b"(arg1), "c"(arg2) : "memory"); _res; })
 
 void init_syscall(void);
 uint32_t getpid(void);
