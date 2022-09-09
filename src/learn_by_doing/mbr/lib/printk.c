@@ -2,6 +2,7 @@
 #include "io.h"
 #include "sync.h"
 #include "stdio.h"
+#include "string.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
@@ -109,7 +110,7 @@ int printk(char* format, ...) {
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
-    return stdout_write(buf);
+    return sys_write(0, buf, strlen(buf));
 }
 
 void console_init() {

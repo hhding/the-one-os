@@ -334,7 +334,10 @@ int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {
         printk("sys_write: fd error\n");
         return -1;
     }
-    if(fd == stdout_no) {
+
+    //if(fd == stdout_no) {
+    if(fd == 0) {
+        if(count > 1024) count = 1023;
         char tmp_buf[1024] = {0};
         memcpy(tmp_buf, buf, count);
         stdout_write(tmp_buf);

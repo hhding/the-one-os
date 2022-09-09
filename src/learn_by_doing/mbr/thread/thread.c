@@ -166,13 +166,15 @@ uint32_t sys_getpid(void) {
 
 void init(void) {
     uint32_t _pid = fork();
+    /*
     if(_pid) {
         printf("iii I am father:\n");
         printf("I am father: %d\n", _pid);
-    } else {
+  } else {
         printf("iii I am child:\n");
         printf("I am child: %d\n", getpid());
     }
+    */
     while(1);
 }
 void thread_init(void) {

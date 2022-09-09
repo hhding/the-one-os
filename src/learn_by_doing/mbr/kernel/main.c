@@ -23,6 +23,7 @@ void k_thread_a(void * arg) {
     */
     //sys_mkdir("/hdir1");
 
+    /*
     char* data = sys_malloc(4096);
     for(int i=0; i< 4096; i++) {
         data[i] = i % 58 + 'A';
@@ -50,6 +51,7 @@ void k_thread_a(void * arg) {
     free(p2);
     char* p3 = malloc(60);
     printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p3);
+    */
     while(1) {
         thread_yield();
     }
