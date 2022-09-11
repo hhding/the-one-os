@@ -10,8 +10,8 @@ uint32_t getpid(void) {
     return _syscall0(SYS_getpid);
 }
 
-uint32_t write(uint32_t fd, char* str) {
-    return _syscall2(SYS_write, fd, str);
+uint32_t write(uint32_t fd, char* str, uint32_t count) {
+    return _syscall3(SYS_write, fd, str, count);
 }
 
 void* malloc(uint32_t size) {

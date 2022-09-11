@@ -71,6 +71,6 @@ int printf(const char* format, ...)
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
-    return write(0, buf);
+    return write(0, buf, strlen(buf));
 }
 

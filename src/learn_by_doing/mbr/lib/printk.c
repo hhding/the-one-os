@@ -3,6 +3,7 @@
 #include "sync.h"
 #include "stdio.h"
 #include "string.h"
+#include "fs.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25

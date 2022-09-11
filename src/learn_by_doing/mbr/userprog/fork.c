@@ -26,7 +26,7 @@ static void copy_pcb(struct task_struct* child_thread, struct task_struct* paren
 
 static int32_t copy_vaddrbitmap(struct task_struct* child_thread, struct task_struct* parent_thread) {
     uint32_t bitmap_pg_cnt = DIV_ROUND_UP(
-        (0xc00000000 - USER_VADDR_START) / PAGE_SIZE / 8, PAGE_SIZE);
+        (0xc0000000 - USER_VADDR_START) / PAGE_SIZE / 8, PAGE_SIZE);
     void* vaddr_btmp = get_kernel_pages(bitmap_pg_cnt);
     if(vaddr_btmp == NULL) return -1;
     memcpy(vaddr_btmp, child_thread->userprog_vaddr.vaddr_bitmap.bits, bitmap_pg_cnt * PAGE_SIZE);
@@ -60,7 +60,7 @@ static void copy_body_stack3(struct task_struct* child_thread, struct task_struc
 }
 
 static int32_t build_child_stack(struct task_struct* child_thread) {
-    struct intr_stack* intr0_stack = (struct intr_stack*)((uint32_t)child_thread + PAGE_SIZE + sizeof(struct intr_stack));
+    struct intr_stack* intr0_stack = (struct intr_stack*)((uint32_t)child_thread + PAGE_SIZE - sizeof(struct intr_stack));
     // fork 的返回值为 0 
     intr0_stack->eax = 0;
     // 设置 switch_to 的 ret 代码直接返回到中断退出代码
@@ -114,8 +114,8 @@ int32_t copy_process(struct task_struct* child_thread, struct task_struct* paren
     if(buf_page == NULL) return -1;
 
     copy_pcb(child_thread, parent_thread);
-    child_thread->pgdir = create_page_dir();
     copy_vaddrbitmap(child_thread, parent_thread);
+    child_thread->pgdir = create_page_dir();
 
     copy_body_stack3(child_thread, parent_thread, buf_page);
     build_child_stack(child_thread);
