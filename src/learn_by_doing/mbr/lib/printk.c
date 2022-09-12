@@ -65,21 +65,24 @@ void update_cursor(uint16_t pos)
 static int32_t _putchar(char c)
 {
     char* p_strdst = (char*)(VGA_ADDR);
-    // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
     uint16_t pos = get_cursor_position();
 
     switch(c) {
+        // \r
         case 0x0d:
             pos = pos - pos % VGA_WIDTH;
             update_cursor(pos);
             break;
+        // \n
         case 0x0a:
             pos = pos - pos % VGA_WIDTH + VGA_WIDTH;
             update_cursor(pos);
             break;
+        // \b
         case 0x08:
-            *(p_strdst + pos * 2) = 0x20;
-            *(p_strdst + pos * 2 + 1) = 0x07;
+            // delete char *before* cursor, so -2 here
+            *(p_strdst + pos * 2 - 2) = 0x20;
+            *(p_strdst + pos * 2 + 1 - 2) = 0x07;
             if(pos >= 1)
                 pos = pos - 1;
             update_cursor(pos);
