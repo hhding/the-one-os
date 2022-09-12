@@ -4,7 +4,10 @@
 #include "interrupt.h"
 #include "thread.h"
 #include "debug.h"
+#include "ioqueue.h"
+
 #define KBD_BUF_PORT 0x60
+struct ioqueue keyboard_ioq;
 
 /* 用转义字符定义部分控制字符 */
 #define esc     '\033'   // 八进制表示字符,也可以用十六进制'\x1b'
@@ -38,7 +41,7 @@
 
 /* 定义以下变量记录相应键是否按下的状态,
  * ext_scancode用于记录makecode是否以0xe0开头 */
-static bool ctrl_status, shift_status, alt_status, caps_lock_status, ext_scancode;
+//static bool ctrl_status, shift_status, alt_status, caps_lock_status, ext_scancode;
 
 /* 以通码make_code为索引的二维数组 */
 static char keymap[][2] = {
@@ -109,13 +112,15 @@ static char keymap[][2] = {
 static void keyboard_handler() {
     uint8_t scancode = inb(KBD_BUF_PORT);
     if(scancode == 0xe0) return;
-    if(scancode > 0x00 && scancode < 0x3b)
-        printk("%c", keymap[scancode][0]);
+    if(scancode > 0x00 && scancode < 0x3b) {
+        ioq_putchar(&keyboard_ioq, keymap[scancode][0]);
+    }
 }
 
 void keyboard_init() {
     printk("keyboard_init start\n");
     register_handler(0x21, keyboard_handler);
+    ioqueue_init(&keyboard_ioq);
     printk("keyboard_init done\n");
 }
 

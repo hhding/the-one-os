@@ -1,7 +1,7 @@
 #include "pipe.h"
 
 bool is_pipe(uint32_t local_fd) {
-    return true;
+    return false;
 }
 
 int32_t sys_pipe(int32_t pipefd[2]) {

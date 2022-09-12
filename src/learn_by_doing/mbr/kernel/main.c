@@ -15,8 +15,8 @@
 int test_var_a = 0, test_var_b = 0;
 
 void k_thread_a(void * arg) {
-    int32_t fd;
     /*
+    int32_t fd;
     fd = sys_open("/file3", O_CREAT);
     if(fd > 0) sys_close(fd);
     sys_unlink("/file4");

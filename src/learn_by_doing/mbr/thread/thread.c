@@ -10,6 +10,7 @@
 #include "process.h"
 #include "stdio.h"
 #include "syscall.h"
+#include "shell.h"
 
 #define PAGE_SIZE 4096
 
@@ -168,11 +169,10 @@ void init(void) {
     printf("ready to fork, mypid: %d\n", getpid());
     uint32_t _pid = fork();
     if(_pid) {
-        printf("iii I am father:\n");
-        printf("I am father: %d\n", _pid);
+        printf("I am father, mypid: %d, child pid: %d\n", getpid(), _pid);
     } else {
-        printf("iii I am child:\n");
-        printf("I am child: %d\n", getpid());
+        printf("enter shell..\n");
+        my_shell();
     }
     while(1);
 }

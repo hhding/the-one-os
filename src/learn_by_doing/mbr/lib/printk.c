@@ -62,7 +62,7 @@ void update_cursor(uint16_t pos)
 	outb(CRT_CTRL_DATA_R, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-static uint32_t _putchar(char c)
+static int32_t _putchar(char c)
 {
     char* p_strdst = (char*)(VGA_ADDR);
     // CR(\r): 0x0d, LF(\n): 0xa, BS: 0x8
@@ -90,6 +90,13 @@ static uint32_t _putchar(char c)
     }
     return 1;
 }
+
+int32_t sys_putchar(char c) {
+    lock_acquire(&print_lock);
+    _putchar(c);
+    lock_release(&print_lock);
+    return 0;
+}
                 
 int stdout_write(char *s) {
     char c;
@@ -111,7 +118,7 @@ int printk(char* format, ...) {
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
-    return sys_write(0, buf, strlen(buf));
+    return sys_write(1, buf, strlen(buf));
 }
 
 void console_init() {

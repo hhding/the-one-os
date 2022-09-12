@@ -11,6 +11,8 @@
 #include "memory.h"
 #include "file.h"
 #include "printk.h"
+#include "ioqueue.h"
+#include "keyboard.h"
 
 #define FS_MAGIC 0x20220221
 
@@ -335,13 +337,10 @@ int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {
         return -1;
     }
 
-    //if(fd == stdout_no) {
-    if(fd == 0) {
-        if(count > 1024) count = 1023;
+    if(fd == stdout_no) {
         char tmp_buf[1024] = {0};
-        memcpy(tmp_buf, buf, count);
-        stdout_write(tmp_buf);
-        return count;
+        memcpy(tmp_buf, buf, count > 1023? 1023: count);
+        return stdout_write(tmp_buf);
     }
 
     uint32_t _fd = fd_local2global(fd);
@@ -358,6 +357,14 @@ int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
     if(fd < 0) {
         printk("sys_read: fd error\n");
         return -1;
+    }
+    char* buf_p = buf;
+    if(fd == stdin_no) {
+        uint32_t i = 0;
+        for(i=0; i<count; i++) {
+            buf_p[i] = ioq_getchar(&keyboard_ioq);
+        }
+        return i;
     }
     ASSERT(buf != NULL);
     uint32_t _fd = fd_local2global(fd);

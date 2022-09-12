@@ -3,6 +3,7 @@
 #include "stdint.h"
 #include "io.h"
 #include "printk.h"
+#include "shell.h"
 
 #define PIC_M_CTRL 0x20
 #define PIC_M_DATA 0x21
