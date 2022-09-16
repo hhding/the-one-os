@@ -1,13 +1,29 @@
 #ifndef __LIB_USER_SYSCALL_H
 #define __LIB_USER_SYSCALL_H
 #include "stdint.h"
-#define SYS_getpid  0
-#define SYS_write   1
-#define SYS_malloc  2
-#define SYS_free    3
-#define SYS_fork    4
-#define SYS_read   5
-#define SYS_putchar   6
+enum syscall_nr {
+    SYS_GETPID,
+    SYS_WRITE,
+    SYS_MALLOC,
+    SYS_FREE,
+    SYS_FORK,
+    SYS_PUTCHAR,
+    SYS_READ,
+    SYS_OPEN,
+    SYS_CLOSE,
+    SYS_LSEEK,
+    SYS_UNLINK,
+    SYS_MKDIR,
+    SYS_RMDIR,
+    SYS_CHDIR,
+    SYS_OPENDIR,
+    SYS_CLOSEDIR,
+    SYS_READDIR,
+    SYS_REWINDDIR,
+    SYS_STAT,
+    SYS_PS,
+};
+
 #define _syscall0(name) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name) : "memory"); _res; })
 #define _syscall1(name, arg1) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name), "b"(arg1) : "memory"); _res; })
 #define _syscall2(name, arg1, arg2) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name), "b"(arg1), "c"(arg2) : "memory"); _res; })
