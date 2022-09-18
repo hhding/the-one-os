@@ -234,9 +234,10 @@ struct dir_entry* dir_read(struct dir* dir) {
         if(all_blocks[block_idx] == 0) continue;
         disk_read(cur_part->my_disk, all_blocks[block_idx], dir_e, 1);
         for(uint32_t dir_idx = 0; dir_idx < dir_entrys_per_sec; dir_idx++) {
+            //printk("block: %d, idx: %d, dir_pos: %d\n", block_idx, dir_idx, dir->dir_pos);
             if((dir_e + dir_idx)->f_type) {
                 cur_dir_entry_pos += dir_entry_size;
-                if(cur_dir_entry_pos < dir->dir_pos) continue;
+                if(cur_dir_entry_pos <= dir->dir_pos) continue;
                 ASSERT(dir->dir_pos + dir_entry_size == cur_dir_entry_pos)
                 dir->dir_pos = cur_dir_entry_pos;
                 return dir_e + dir_idx;

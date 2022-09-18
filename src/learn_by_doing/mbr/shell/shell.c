@@ -66,7 +66,11 @@ void run_external(int argc, char** argv) {
 static void cmd_execute(int32_t argc, char** argv) {
     char* cmd = argv[0];
     if(!strcmp("ls", cmd)) buildin_ls(argc, argv);
-    else if(!strcmp("cd", cmd)) buildin_cd(argc, argv);
+    else if(!strcmp("cd", cmd)) {
+        char* path = buildin_cd(argc, argv);
+        // memset(cwd_cache, 0, MAX_FILE_NAME_LEN);
+        strcpy(cwd_cache, path);
+    }
     else if(!strcmp("pwd", cmd)) buildin_pwd(argc, argv);
     else if(!strcmp("ps", cmd)) buildin_ps(argc, argv);
     else if(!strcmp("mkdir", cmd)) buildin_mkdir(argc, argv);

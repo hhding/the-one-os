@@ -1,27 +1,38 @@
 #ifndef __LIB_USER_SYSCALL_H
 #define __LIB_USER_SYSCALL_H
 #include "stdint.h"
+#include "fs.h"
+#include "dir.h"
+
 enum syscall_nr {
-    SYS_GETPID,
-    SYS_WRITE,
-    SYS_MALLOC,
-    SYS_FREE,
-    SYS_FORK,
-    SYS_PUTCHAR,
-    SYS_READ,
-    SYS_OPEN,
-    SYS_CLOSE,
-    SYS_LSEEK,
-    SYS_UNLINK,
-    SYS_MKDIR,
-    SYS_RMDIR,
-    SYS_CHDIR,
-    SYS_OPENDIR,
-    SYS_CLOSEDIR,
-    SYS_READDIR,
-    SYS_REWINDDIR,
-    SYS_STAT,
-    SYS_PS,
+   SYS_GETPID,
+   SYS_WRITE,
+   SYS_MALLOC,
+   SYS_FREE,
+   SYS_FORK,
+   SYS_READ,
+   SYS_PUTCHAR,
+   SYS_CLEAR,
+   SYS_GETCWD,
+   SYS_OPEN,
+   SYS_CLOSE,
+   SYS_LSEEK,
+   SYS_UNLINK,
+   SYS_MKDIR,
+   SYS_OPENDIR,
+   SYS_CLOSEDIR,
+   SYS_CHDIR,
+   SYS_RMDIR,
+   SYS_READDIR,
+   SYS_REWINDDIR,
+   SYS_STAT,
+   SYS_PS,
+   SYS_EXECV,
+   SYS_EXIT,
+   SYS_WAIT,
+   SYS_PIPE,
+   SYS_FD_REDIRECT,
+   SYS_HELP
 };
 
 #define _syscall0(name) ({ int _res; asm volatile("int $0x80" : "=a"(_res) : "a"(name) : "memory"); _res; })
@@ -37,5 +48,14 @@ void free(void* ptr);
 int32_t write(int32_t fd, char* str, uint32_t count);
 int32_t read(int32_t fd, char* str, uint32_t count);
 int32_t putchar(char c);
+char* getcwd(char* buf, uint32_t size);
+int32_t chdir(const char* path);
+int32_t stat(const char* path, struct stat* buf);
+int32_t mkdir(const char* path);
+int32_t stat(const char* path, struct stat* buf);
+struct dir* opendir(const char* name);
+struct dir_entry* readdir(struct dir* dir);
+int32_t rewinddir(struct dir* dir);
+int32_t closedir(struct dir* dir);
 #endif
 
