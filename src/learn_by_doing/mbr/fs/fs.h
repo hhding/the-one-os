@@ -40,6 +40,7 @@ struct stat {
     enum file_types st_filetype;
 };
 
+char* path_parse(char* pathname, char* name_store);
 extern struct partition* cur_part;
 void filesystem_init(void);
 int32_t path_depth_cnt(char* pathname);

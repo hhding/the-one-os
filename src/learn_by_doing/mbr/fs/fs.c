@@ -134,7 +134,7 @@ void partition_format(struct partition* part) {
     sys_free(buf);
 }
 
-static char* path_parse(char* pathname, char* name_store) {
+char* path_parse(char* pathname, char* name_store) {
     /*
         path_parse 返回结果：
         /a/b/c -> ret: b/c name: a
@@ -640,6 +640,7 @@ static int32_t get_child_dir_name(uint32_t p_inode_no, uint32_t c_inode_no, char
             strcat(path, dir_e->filename);
             return 0;
         }
+        dir_e = dir_read(dir);
     }
     return -1;
 }

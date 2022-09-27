@@ -68,7 +68,7 @@ static void cmd_execute(int32_t argc, char** argv) {
     if(!strcmp("ls", cmd)) buildin_ls(argc, argv);
     else if(!strcmp("cd", cmd)) {
         char* path = buildin_cd(argc, argv);
-        // memset(cwd_cache, 0, MAX_FILE_NAME_LEN);
+        memset(cwd_cache, 0, MAX_FILE_NAME_LEN);
         strcpy(cwd_cache, path);
     }
     else if(!strcmp("pwd", cmd)) buildin_pwd(argc, argv);
