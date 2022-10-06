@@ -5,6 +5,8 @@
 #include "memory.h"
 #include "fork.h"
 #include "fs.h"
+#include "wait_exit.h"
+#include "exec.h"
 
 int32_t getpid(void) {
     return _syscall0(SYS_GETPID);
@@ -66,6 +68,30 @@ int32_t closedir(struct dir* dir) {
     return _syscall1(SYS_CLOSEDIR, dir);
 }
 
+void ps(void) {
+    _syscall0(SYS_PS);
+}
+
+int32_t rmdir(const char* path) {
+    return _syscall1(SYS_RMDIR, path);
+}
+
+int32_t unlink(const char* path) {
+    return _syscall1(SYS_UNLINK, path);
+}
+
+pid_t wait() {
+    return _syscall0(SYS_WAIT);
+}
+
+void exit(int32_t* status) {
+    _syscall1(SYS_EXIT, status);
+}
+
+int32_t execv(const char* path, const char* argv[]) {
+    return _syscall2(SYS_EXECV, path, argv);
+}
+
 void init_syscall() {
     printk("syscall init start\n");
     register_syscall(SYS_GETPID, sys_getpid);
@@ -83,5 +109,11 @@ void init_syscall() {
     register_syscall(SYS_READDIR, sys_readdir);
     register_syscall(SYS_CLOSEDIR, sys_closedir);
     register_syscall(SYS_REWINDDIR, sys_rewinddir);
+    register_syscall(SYS_PS, sys_ps);
+    register_syscall(SYS_RMDIR, sys_rmdir);
+    register_syscall(SYS_UNLINK, sys_unlink);
+    register_syscall(SYS_EXECV, sys_execv);
+    register_syscall(SYS_WAIT, sys_wait);
+    register_syscall(SYS_EXIT, sys_exit);
     printk("syscall init done\n");
 }

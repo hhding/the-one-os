@@ -23,7 +23,7 @@ CFLAGS          = -c -Os -m32 -Wall -Wshadow -W -Wno-sign-conversion  -fno-stack
 LDFLAGS         = -static -T ld.lds -n -Map hello.map
 #LDFLAGS         = -s -static -T ld.lds -n -Map hello.map
 
-objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o fs/fs.o fs/inode.o fs/file.o fs/dir.o userprog/fork.o shell/pipe.o shell/shell.o device/ioqueue.o shell/buildin_cmd.o
+objfiles = kernel/main.o lib/printk.o kernel/interrupt.o kernel/interrupt_helper.o kernel/debug.o lib/string.o lib/bitmap.o kernel/memory.o thread/thread.o lib/list.o kernel/switch.o device/timer.o kernel/sync.o device/keyboard.o kernel/tss.o userprog/process.o kernel/syscall.o lib/stdio.o device/ide.o fs/fs.o fs/inode.o fs/file.o fs/dir.o userprog/fork.o shell/pipe.o shell/shell.o device/ioqueue.o shell/buildin_cmd.o userprog/wait_exit.o userprog/exec.o
 
 bin: boot/mbr.bin boot/loader.bin kernel/kernel.bin
 	@dd if=boot/mbr.bin of=bochs/disk0 bs=512 seek=0 conv=notrunc

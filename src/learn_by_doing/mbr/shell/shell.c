@@ -12,7 +12,7 @@ char cwd_cache[MAX_PATH_LEN] = {0};
 char final_path[MAX_PATH_LEN] = {0};
 
 void print_prompt(void) {
-    printf("root@localhost:%s# ", cwd_cache);
+    printf("root@toyos:%s# ", cwd_cache);
 }
 
 static void readline(char* buf, int32_t count) {

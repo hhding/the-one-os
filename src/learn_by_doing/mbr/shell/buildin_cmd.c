@@ -81,13 +81,31 @@ int32_t buildin_mkdir(uint32_t argc, char** argv) {
 }
 
 int32_t buildin_rmdir(uint32_t argc, char** argv) {
-    make_abs_path(argv[1]);
-    return 0;
+    if(argc != 2) {
+        printf("rmdir: only 1 argument is supported!\n");
+    } else {
+        make_abs_path(argv[1]);
+        if(strcmp("/", final_path)) {
+            if(rmdir(final_path) == 0) {
+                return 0;
+            } else printf("rmdir: delete %s failed\n", argv[1]);
+        }
+    }
+    return -1;
 }
 
 int32_t buildin_rm(uint32_t argc, char** argv) {
-    make_abs_path(argv[1]);
-    return 0;
+    if(argc != 2) {
+        printf("rm: only 1 argument is supported!\n");
+    } else {
+        make_abs_path(argv[1]);
+        if(strcmp("/", final_path)) {
+            if(unlink(final_path) == 0) {
+                return 0;
+            } else printf("rm: delete %s failed\n", argv[1]);
+        }
+    }
+    return -1;
 }
 
 //void make_clear_abs_path(char* path, char* wash_buf);
@@ -105,7 +123,7 @@ void buildin_pwd(uint32_t argc, char** argv) {
 }
 
 void buildin_ps(uint32_t argc, char** argv) {
-    return;
+    ps();
 }
 
 void buildin_clear(uint32_t argc, char** argv) {

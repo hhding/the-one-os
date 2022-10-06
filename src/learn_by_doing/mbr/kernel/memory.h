@@ -55,5 +55,6 @@ void pfree(uint32_t pg_phy_addr);
 void sys_free(void* ptr);
 void block_desc_init(struct mem_block_desc* desc_arry);
 void mfree_page(enum pool_flags pf, void* _vaddr, uint32_t cnt);
+void free_a_phy_page(uint32_t pg_phy_addr);
 #endif
 

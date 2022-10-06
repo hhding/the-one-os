@@ -57,5 +57,10 @@ struct dir* opendir(const char* name);
 struct dir_entry* readdir(struct dir* dir);
 int32_t rewinddir(struct dir* dir);
 int32_t closedir(struct dir* dir);
+void ps(void);
+int32_t rmdir(const char* path);
+int32_t unlink(const char* path);
+pid_t wait();
+void exit(int32_t* status);
 #endif
 

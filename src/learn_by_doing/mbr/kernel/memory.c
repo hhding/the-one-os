@@ -27,6 +27,11 @@ struct mem_block_desc k_block_desc[DESC_CNT];
 struct pool kernel_pool, user_pool;
 struct virtual_addr kernel_vaddr;
 
+void free_a_phy_page(uint32_t pg_phy_addr) {
+    struct pool* pool = pg_phy_addr > user_pool.phy_addr_start ? &user_pool: &kernel_pool;
+    bitmap_set(pool->pool_bitmap.bits, (pg_phy_addr - pool->phy_addr_start) / PAGE_SIZE, 0);
+}
+
 static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
     struct virtual_addr* vaddr = NULL;
     int vaddr_start = 0, bit_idx_start = -1;

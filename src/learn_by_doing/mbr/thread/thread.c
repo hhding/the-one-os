@@ -25,16 +25,33 @@ struct task_struct* idle_thread;
 struct list thread_ready_list;
 struct list thread_all_list;
 static struct list_elem* thread_tag;
-static uint32_t pid = 0;
+uint8_t pid_bitmap_bits[128] = {0};
+
+struct pid_pool {
+    struct bitmap pid_bitmap;
+    uint32_t pid_start;
+    struct lock pid_lock;
+} pid_pool;
+
+static void pid_pool_init(void) {
+    pid_pool.pid_start = 1;
+    pid_pool.pid_bitmap.btmap_bytes_len = 128;
+    pid_pool.pid_bitmap.bits = pid_bitmap_bits;
+    bitmap_init(&pid_pool.pid_bitmap);
+    lock_init(&pid_pool.pid_lock);
+}
 
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
-uint32_t allocate_pid() {
-    pid ++;
-    return pid;
+static pid_t allocate_pid() {
+    lock_acquire(&pid_pool.pid_lock);
+    int32_t bit_idx = bitmap_scan(&pid_pool.pid_bitmap, 1);
+    bitmap_set(&pid_pool.pid_bitmap, bit_idx, 1);
+    lock_release(&pid_pool.pid_lock);
+    return (bit_idx + pid_pool.pid_start);
 }
 
-uint32_t fork_pid() { return allocate_pid();}
+pid_t fork_pid() { return allocate_pid();}
 
 struct task_struct* running_thread() {
     uint32_t esp;
@@ -170,16 +187,22 @@ void init(void) {
     uint32_t _pid = fork();
     if(_pid) {
         printf("I am father, mypid: %d, child pid: %d\n", getpid(), _pid);
+        while(1) {
+            wait();
+        }
     } else {
         printf("enter shell..\n");
         my_shell();
+        exit(0);
     }
     while(1);
 }
+
 void thread_init(void) {
     printk("thread_init start\n");
     list_init(&thread_ready_list);
     list_init(&thread_all_list);
+    pid_pool_init();
 
     process_execute(init, "init");
     make_main_thread();
@@ -187,3 +210,50 @@ void thread_init(void) {
     printk("thread_init done\n");
 }
 
+void release_pid(pid_t pid) {
+    lock_acquire(&pid_pool.pid_lock);
+    bitmap_set(&pid_pool.pid_bitmap, pid_pool.pid_start, 0);
+    lock_release(&pid_pool.pid_lock);
+}
+
+void thread_exit(struct task_struct* thread, bool need_schedule) {
+    intr_disable();
+    if(thread->pgdir) mfree_page(PF_KERNEL, thread->pgdir, 1);
+    if(elem_find(&thread_ready_list, &thread->general_tag)) {
+        list_remove(&thread->general_tag);
+    }
+    list_remove(&thread->all_list_tag);
+    if(thread != main_thread) mfree_page(PF_KERNEL, thread, 1);
+    release_pid(thread->pid);
+    if(need_schedule) {
+        schedule();
+        PANIC("thread_exit: should not be here\n");
+    }
+}
+
+static bool thread_info(struct list_elem* pelem, int arg) {
+    struct task_struct* pthread = elem2entry(struct task_struct, all_list_tag, pelem);
+    char* status = "running";
+    switch(pthread->status) {
+        case 0:
+            status = "running"; break;
+        case 1:
+            status = "ready"; break;
+        case 2:
+            status = "blocked"; break;
+        case 3:
+            status = "waiting"; break;
+        case 4:
+            status = "hangling"; break;
+        case 5:
+            status = "died"; break;
+        default:
+            status = "unknown";
+    };
+    printk("%d %d %s %s\n", pthread->pid, pthread->parent_pid, pthread->name, status);
+    return false;
+}
+
+void sys_ps(void) {
+    list_traversal(&thread_all_list, thread_info, 0);
+}
