@@ -60,7 +60,23 @@ static int32_t cmd_parse(char* cmd_str, char** argv, char token) {
 }
 
 void run_external(int argc, char** argv) {
-    printf("run_external: %s, not done yet\n");
+    pid_t pid = fork();
+    int32_t status;
+    if(pid) {
+        wait(&status);
+    } else {
+        make_abs_path(argv[0]);
+        argv[0] = final_path;
+        struct stat file_st;
+        memset(&file_st, 0, sizeof(struct stat));
+        if(stat(final_path, &file_st) == -1) {
+            printf("shell: stat %s failed\n", final_path);
+            exit(0);
+        } else {
+            printf("execv %s\n", argv[0]);
+            execv(argv[0], argv);
+        }
+    }
 }
 
 static void cmd_execute(int32_t argc, char** argv) {

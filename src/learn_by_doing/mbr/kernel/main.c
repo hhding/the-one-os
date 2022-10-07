@@ -11,6 +11,9 @@
 #include "stdio.h"
 #include "ide.h"
 #include "fs.h"
+#include "fork.h"
+#include "wait_exit.h"
+#include "exec.h"
 
 int test_var_a = 0, test_var_b = 0;
 
@@ -51,6 +54,11 @@ void k_thread_a(void * arg) {
     free(p2);
     char* p3 = malloc(60);
     printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p3);
+    char* buf = sys_malloc(4096);
+    disk_read(&channels[0].devices[0], 100, buf, 8);
+    int fd = sys_open("/cat", O_RDWR | O_CREAT);
+    sys_write(fd, buf, 4096);
+    sys_free(buf);
     */
     while(1) {
         thread_yield();
@@ -82,6 +90,32 @@ void __attribute__((optimize("O0"))) u_prog_b(void) {
     test_var_b = getpid();
     printf("u_prog_b: pid<%d>\n", test_var_b);
     while(1);
+}
+void init_syscall() {
+    printk("syscall init start\n");
+    register_syscall(SYS_GETPID, sys_getpid);
+    register_syscall(SYS_OPEN, sys_open);
+    register_syscall(SYS_READ, sys_read);
+    register_syscall(SYS_WRITE, sys_write);
+    register_syscall(SYS_MALLOC, sys_malloc);
+    register_syscall(SYS_FREE, sys_free);
+    register_syscall(SYS_FORK, sys_fork);
+    register_syscall(SYS_PUTCHAR, sys_putchar);
+    register_syscall(SYS_GETCWD, sys_getcwd);
+    register_syscall(SYS_CHDIR, sys_chdir);
+    register_syscall(SYS_STAT, sys_stat);
+    register_syscall(SYS_MKDIR, sys_mkdir);
+    register_syscall(SYS_OPENDIR, sys_opendir);
+    register_syscall(SYS_READDIR, sys_readdir);
+    register_syscall(SYS_CLOSEDIR, sys_closedir);
+    register_syscall(SYS_REWINDDIR, sys_rewinddir);
+    register_syscall(SYS_PS, sys_ps);
+    register_syscall(SYS_RMDIR, sys_rmdir);
+    register_syscall(SYS_UNLINK, sys_unlink);
+    register_syscall(SYS_EXECV, sys_execv);
+    register_syscall(SYS_WAIT, sys_wait);
+    register_syscall(SYS_EXIT, sys_exit);
+    printk("syscall init done\n");
 }
 
 void main()

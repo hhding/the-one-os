@@ -160,7 +160,7 @@ void idt_init() {
     exception_init();
     pic_init();
 
-    uint64_t idt_operand = ((sizeof(idt) -1) | ((uint64_t) ((uint32_t)idt << 16)));
+    uint64_t idt_operand = ((sizeof(idt) -1) | (((uint64_t)(uint32_t)idt) << 16));
     //printk("idt addr: %x\n", (uint32_t)idt);
     asm volatile("lidt %0": : "m" (idt_operand));
     printk("idt_init done\n");

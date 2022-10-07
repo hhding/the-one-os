@@ -9,8 +9,8 @@
 #include "tss.h"
 
 void create_user_vaddr_bitmap(struct task_struct* thread) {
-    thread->userprog_vaddr.vaddr_start = USER_VADDR_START;
     uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PAGE_SIZE / 8, PAGE_SIZE);
+    thread->userprog_vaddr.vaddr_start = USER_VADDR_START;
     thread->userprog_vaddr.vaddr_bitmap.bits = get_kernel_pages(bitmap_pg_cnt);
     thread->userprog_vaddr.vaddr_bitmap.btmap_bytes_len = (0xc0000000 - USER_VADDR_START) / PAGE_SIZE / 8;
     bitmap_init(&thread->userprog_vaddr.vaddr_bitmap);
@@ -96,18 +96,17 @@ void page_dir_activate(struct task_struct* p_thread) {
 
 uint32_t* create_page_dir(void) {
     uint32_t* page_dir_vaddr = get_kernel_pages(1);
-    printk("create_page_dir<page_dir_vaddr>: %x\n", (uint32_t)page_dir_vaddr);
     ASSERT(page_dir_vaddr != NULL);
     if (page_dir_vaddr == NULL) {
         PANIC("create_page_dir: get_kernel_page falied!");
     }
     // 拷贝页目录（高1GB地址空间，共256个项，每个项要4个字节，共1024字节）
     // memcpy(dst, src, size)
-    memcpy((uint32_t*)((uint32_t)page_dir_vaddr + 768*4), (uint32_t*)(0xfffff000 + 768 * 4), 1024);
-    memcpy((uint32_t*)((uint32_t)page_dir_vaddr), (uint32_t*)(0xfffff000), 4);
+    memcpy((uint32_t*)((uint32_t)page_dir_vaddr + 768 * 4), (uint32_t*)(0xfffff000 + 768 * 4), 1024);
+    // memcpy((uint32_t*)((uint32_t)page_dir_vaddr), (uint32_t*)(0xfffff000), 4);
     // 拷过来的页目录，其中最后一项应该改成指向其自己
     uint32_t phy_addr = addr_v2p((uint32_t)page_dir_vaddr);
-    printk("create_page_dir<phy_addr>: %x\n", (uint32_t)phy_addr);
+    printk("create_page_dir<vaddr/phy_addr>: 0x%x / 0x%x\n", (uint32_t)page_dir_vaddr, (uint32_t)phy_addr);
     page_dir_vaddr[1023] = phy_addr | PG_US_U | PG_RW_W | PG_P_1;
     return page_dir_vaddr;
 }
@@ -121,7 +120,7 @@ void process_execute(void* filename, char* name) {
     // 这里就要创建进程用的页表，包括页目录和页表
     thread->pgdir = create_page_dir();
     block_desc_init(thread->u_block_desc);
-    //printk("pgdir %s: %x\n", name, (uint32_t)thread->pgdir);
+    printk("pgdir %s: %x\n", name, (uint32_t)thread->pgdir);
 
     enum intr_status old_status = intr_disable();
     ASSERT(!elem_find(&thread_ready_list, &thread->general_tag));

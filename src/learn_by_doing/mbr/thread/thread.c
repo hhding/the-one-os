@@ -185,17 +185,18 @@ uint32_t sys_getpid(void) {
 void init(void) {
     printf("ready to fork, mypid: %d\n", getpid());
     uint32_t _pid = fork();
+    while(1);
+    int32_t status;
     if(_pid) {
         printf("I am father, mypid: %d, child pid: %d\n", getpid(), _pid);
         while(1) {
-            wait();
+            wait(&status);
         }
     } else {
         printf("enter shell..\n");
         my_shell();
         exit(0);
     }
-    while(1);
 }
 
 void thread_init(void) {

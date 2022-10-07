@@ -3,7 +3,7 @@
 #include "global.h"
 
 void memset(void* dst_, uint8_t value, uint32_t size) {
-    ASSERT(dst_ != NULL);
+    // ASSERT(dst_ != NULL);
     uint8_t * dst = (uint8_t*) dst_;
     while (size-- > 0) *dst++ = value;
 }
@@ -28,21 +28,21 @@ int memcmp(const void* a_, const void* b_, uint32_t size) {
 }
 
 char* strcpy(char* dst_, const char* src_) {
-    ASSERT(dst_ != NULL && src_ != NULL);
+    // ASSERT(dst_ != NULL && src_ != NULL);
     char * r = dst_;
     while((*dst_++ = *src_++));
     return r;
 }
 
 uint32_t strlen(const char* str) {
-    ASSERT(str != NULL);
+    // ASSERT(str != NULL);
     const char* p = str;
     while(*str++);
     return str - p - 1;
 }
 
 int8_t strcmp(const char* a, const char* b) {
-    ASSERT(a != NULL && b != NULL);
+    // ASSERT(a != NULL && b != NULL);
     while(*a !=0 && *a == *b) {
         a++;
         b++;
@@ -51,7 +51,7 @@ int8_t strcmp(const char* a, const char* b) {
 }
 
 char *strchr(const char* str, const uint8_t ch) {
-    ASSERT(str != NULL);
+    // ASSERT(str != NULL);
     while (*str !=0) {
         if(*str == ch) return (char*) str;
         str++;
@@ -60,7 +60,7 @@ char *strchr(const char* str, const uint8_t ch) {
 }
 
 char*  strrchr(const char* str, const uint8_t ch) {
-    ASSERT(str != NULL);
+    // ASSERT(str != NULL);
     const char * last_char = NULL;
     while (*str !=0) {
         if(*str == ch) last_char = str;
@@ -70,7 +70,7 @@ char*  strrchr(const char* str, const uint8_t ch) {
 }
 
 char* strcat(char* dst_, const char* src_) {
-    ASSERT(dst_ != NULL && src_ != NULL);
+    // ASSERT(dst_ != NULL && src_ != NULL);
     char *str = dst_;
     while(*str++);
     str--;
@@ -79,7 +79,7 @@ char* strcat(char* dst_, const char* src_) {
 }
 
 uint32_t strchrs(const char* str, uint8_t ch) {
-    ASSERT(str != NULL);
+    // ASSERT(str != NULL);
     uint32_t cnt = 0;
     const char* p = str;
     while (*p !=0) {

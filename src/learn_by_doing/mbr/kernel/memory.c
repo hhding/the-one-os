@@ -29,7 +29,7 @@ struct virtual_addr kernel_vaddr;
 
 void free_a_phy_page(uint32_t pg_phy_addr) {
     struct pool* pool = pg_phy_addr > user_pool.phy_addr_start ? &user_pool: &kernel_pool;
-    bitmap_set(pool->pool_bitmap.bits, (pg_phy_addr - pool->phy_addr_start) / PAGE_SIZE, 0);
+    bitmap_set(&pool->pool_bitmap, (pg_phy_addr - pool->phy_addr_start) / PAGE_SIZE, 0);
 }
 
 static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
@@ -136,7 +136,7 @@ int update_thread_bitmap(enum pool_flags pf, uint32_t vaddr) {
     } else if(cur->pgdir == NULL && pf == PF_KERNEL) {
         thread_vaddr = &kernel_vaddr;
     } else {
-        PANIC("get_a_page:not allow kernel alloc userspace or user alloc kernelspace by get_a_page");
+        PANIC("get_a_page:not allow kernel alloc userspace or user alloc kernelspace");
     }
 
     idx = (vaddr - thread_vaddr->vaddr_start) / PAGE_SIZE;
@@ -146,13 +146,16 @@ int update_thread_bitmap(enum pool_flags pf, uint32_t vaddr) {
 }
 
 void* get_a_page(enum pool_flags pf, uint32_t vaddr, uint32_t op_bitmap) {
+    printk("get_a_page: vaddr: 0x%x\n", vaddr);
     struct pool* mem_pool = (pf & PF_KERNEL ? &kernel_pool : &user_pool);
     lock_acquire(&mem_pool->lock);
 
     void* page_phyaddr = palloc(mem_pool);
     if(page_phyaddr == NULL) goto get_a_page_fail;
 
-    if(op_bitmap) update_thread_bitmap(pf, vaddr);
+    if(op_bitmap) {
+        update_thread_bitmap(pf, vaddr);
+    }
     page_table_add((void*)vaddr, page_phyaddr);
     lock_release(&mem_pool->lock);
 
