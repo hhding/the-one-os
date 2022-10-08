@@ -46,11 +46,13 @@ enum segment_type {
 
 static bool segment_load(int32_t fd, uint32_t offset, uint32_t filesz, uint32_t vaddr) {
     uint32_t page_cnt = DIV_ROUND_UP((vaddr & 0x00000fff) + filesz, PAGE_SIZE);
+    printk("start segment_load for %x, cnt: %d\n", vaddr, page_cnt);
     uint32_t vaddr_page = vaddr & 0xfffff000;
     for(uint32_t page_idx = 0; page_idx < page_cnt; page_idx++) {
         uint32_t *pde = pde_ptr(vaddr_page);
         uint32_t *pte = pte_ptr(vaddr_page);
         if(!(*pde & 0x00000001) || !(*pte & 0x00000001)) {
+            printk("allocate page for %x, idx: %d\n", vaddr_page, page_idx);
             if(get_a_page(PF_USER, vaddr_page, 1) == NULL) return false;
         }
         vaddr_page += PAGE_SIZE;
@@ -88,14 +90,20 @@ int32_t load(const char* path) {
             goto load_done;
         }
         if(PT_LOAD == prog_header.p_type) {
+            printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
             if(!segment_load(fd, prog_header.p_offset, prog_header.p_filesz, prog_header.p_vaddr)) {
+                printk("segment_load failed\n");
                 goto load_done;
             }
+            printk("segment_load success\n");
         }
     }
     ret = elf_header.e_entry;
+    printk("%s entry: %x\n", path, ret);
 load_done:
     sys_close(fd);
+    printk("load ret: %d\n", ret);
+    while(1);
     return ret;
 }
 
@@ -103,7 +111,9 @@ int32_t sys_execv(const char* path, const char* argv[]) {
     uint32_t argc = 0;
     while(argv[argc++]);
 
+    printk("loading %s\n", path);
     int32_t entry_point = load(path);
+    while(1);
     if(entry_point == -1) return -1;
 
     struct task_struct* cur = running_thread();

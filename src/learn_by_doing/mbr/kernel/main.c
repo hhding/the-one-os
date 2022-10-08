@@ -54,12 +54,15 @@ void k_thread_a(void * arg) {
     free(p2);
     char* p3 = malloc(60);
     printk("k_thread_a: 0x%x 0x%x\n", (uint32_t)p1, (uint32_t)p3);
+    */
     char* buf = sys_malloc(4096);
     disk_read(&channels[0].devices[0], 100, buf, 8);
     int fd = sys_open("/cat", O_RDWR | O_CREAT);
-    sys_write(fd, buf, 4096);
+    if(fd != -1) {
+        sys_write(fd, buf, 4096);
+        sys_close(fd);
+    }
     sys_free(buf);
-    */
     while(1) {
         thread_yield();
     }
@@ -91,6 +94,7 @@ void __attribute__((optimize("O0"))) u_prog_b(void) {
     printf("u_prog_b: pid<%d>\n", test_var_b);
     while(1);
 }
+
 void init_syscall() {
     printk("syscall init start\n");
     register_syscall(SYS_GETPID, sys_getpid);

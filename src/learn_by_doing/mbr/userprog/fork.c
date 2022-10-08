@@ -85,7 +85,7 @@ static int32_t build_child_stack(struct task_struct* child_thread) {
 
 static void update_inode_open_cnts(struct task_struct* thread) {
     int32_t global_fd = 0;
-    for(int32_t local_fd = 0; local_fd < MAX_FILES_OPEN_PER_PROC; local_fd++) {
+    for(int32_t local_fd = 3; local_fd < MAX_FILES_OPEN_PER_PROC; local_fd++) {
         global_fd = thread->fd_table[local_fd];
         ASSERT(global_fd < MAX_FILE_OPEN);
         if(global_fd != -1) {

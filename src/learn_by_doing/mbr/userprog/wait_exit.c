@@ -46,17 +46,17 @@ void release_prog_resource(struct task_struct* pthread) {
     for(uint32_t pde_idx = 0; pde_idx < 768; pde_idx++) {
         uint32_t pde = *(pgdir_vaddr + pde_idx);
         if(pde & 0x00000001) {
-            printk("free pde_idx: %d 0x%x\n", pde_idx, pde);
+            // printk("free pde_idx: %d 0x%x\n", pde_idx, pde);
             // 这里其实就是虚拟地址了，pde_idx * 0x400000，后者是 4MB
             uint32_t* pte_vaddr = pte_ptr(pde_idx * 0x400000);
             for(uint32_t pte_idx = 0; pte_idx < 1024; pte_idx++) {
                 uint32_t pte = *(pte_vaddr + pte_idx);
                 if(pte & 0x00000001) {
-                    printk(" %x", pte & 0xfffff000);
+                    //printk(" %x", pte & 0xfffff000);
                     free_a_phy_page(pte & 0xfffff000);
                 }
             }
-            printk("\nfree pde_idx self: %d\n", pde_idx);
+            //printk("\nfree pde_idx self: %d\n", pde_idx);
             free_a_phy_page(pde & 0xfffff000);
         }
     }

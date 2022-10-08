@@ -141,12 +141,16 @@ int update_thread_bitmap(enum pool_flags pf, uint32_t vaddr) {
 
     idx = (vaddr - thread_vaddr->vaddr_start) / PAGE_SIZE;
     ASSERT(idx > 0);
+    if(vaddr == 0x1000) {
+        printk("idx: %d %x\n", idx, (uint32_t)thread_vaddr->vaddr_bitmap.bits);
+        while(1);
+    }
+
     bitmap_set(&thread_vaddr->vaddr_bitmap, idx, 1);
     return 0;
 }
 
 void* get_a_page(enum pool_flags pf, uint32_t vaddr, uint32_t op_bitmap) {
-    printk("get_a_page: vaddr: 0x%x\n", vaddr);
     struct pool* mem_pool = (pf & PF_KERNEL ? &kernel_pool : &user_pool);
     lock_acquire(&mem_pool->lock);
 
@@ -266,6 +270,7 @@ void* sys_malloc(uint32_t size) {
             memset(a, 0, PAGE_SIZE);
             a->desc = &desc[a_idx];
             a->cnt = desc[a_idx].block_per_arena;
+            printk("malloc: size: %d, a->cnt: %d\n", size, a->cnt);
             a->large = false;
             uint32_t b_idx;
             enum intr_status old_status = intr_disable();
@@ -281,6 +286,7 @@ void* sys_malloc(uint32_t size) {
         a = block2arena(b);
         a->cnt--;
         lock_release(&mem_pool->lock);
+        // printk("malloc size: %d %x\n", size, (uint32_t)b);
         return (void*)b;
     }
 }
@@ -368,6 +374,7 @@ void sys_free(void* ptr) {
 }
 
 void block_desc_init(struct mem_block_desc* desc_arry) {
+    // 16, 32, 64, 128, 256, 512, 1024.
     int block_size = 16;
     for(int i=0; i < DESC_CNT; i++) {
         desc_arry[i].block_size = block_size;
@@ -382,5 +389,10 @@ void mem_init() {
     uint32_t mem_bytes_total = 32*1024*1024;
     mem_pool_init(mem_bytes_total);
     block_desc_init(k_block_desc);
+    uint32_t* pde = pde_ptr(0);
+    // dirty fix, release the first 1 MB from virtual addr in kernel space.
+    printk("pde: %x pde[0]: %x *pde: %x\n", pde[1023], pde[0], *pde);
+    pde[0] = 0;
+    asm volatile ("movl %0, %%cr3" : : "r" (pde[1023]) : "memory");
     printk("memory_init done\n");
 }

@@ -295,6 +295,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
    uint32_t start_offset = file->fd_pos % BLOCK_SIZE;
    uint32_t end_sec = (file->fd_pos + size) / BLOCK_SIZE;
    uint32_t end_offset = (file->fd_pos + size) % BLOCK_SIZE;
+   // printk("file_read, all_blocks: %d\n", BLOCK_SIZE + 48);
    uint32_t* all_blocks = (uint32_t*)sys_malloc(BLOCK_SIZE + 48);
 
    if(all_blocks == NULL) {
@@ -339,7 +340,9 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       bytes_read += end_offset;
    }
 
+   printk("free all_blocks: %x\n", all_blocks);
    sys_free(all_blocks);
+   printk("free io_buf: %x\n", io_buf);
    sys_free(io_buf);
    file->fd_pos = file->fd_pos + bytes_read;
    return bytes_read;

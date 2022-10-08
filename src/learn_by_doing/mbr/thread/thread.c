@@ -185,7 +185,6 @@ uint32_t sys_getpid(void) {
 void init(void) {
     printf("ready to fork, mypid: %d\n", getpid());
     uint32_t _pid = fork();
-    while(1);
     int32_t status;
     if(_pid) {
         printf("I am father, mypid: %d, child pid: %d\n", getpid(), _pid);
