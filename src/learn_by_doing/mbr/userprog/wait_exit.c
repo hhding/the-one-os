@@ -41,7 +41,7 @@ pid_t sys_wait(int32_t* status) {
 void release_prog_resource(struct task_struct* pthread) {
     // 页目录就在这里
     uint32_t* pgdir_vaddr = pthread->pgdir;
-    printk("free pgdir: 0x%x\n", (uint32_t)pgdir_vaddr);
+    // printk("free pgdir: 0x%x\n", (uint32_t)pgdir_vaddr);
     // lower 3GB for user space, 1024 * 3 / 4 = 768
     for(uint32_t pde_idx = 0; pde_idx < 768; pde_idx++) {
         uint32_t pde = *(pgdir_vaddr + pde_idx);

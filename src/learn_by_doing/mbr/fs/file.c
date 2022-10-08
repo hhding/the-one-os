@@ -275,9 +275,12 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
 }
 
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
+   // printk("--> file_read: size: %d\n", count);
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
+   struct arena* a = (struct arena*)((uint32_t)io_buf & 0xfffff000);
+   // printk("io_buf-> arena: 0x%x, cnt: %d l: %d bs: %d bs_cnt: %d\n", a, a->cnt, a->large, a->desc->block_size, a->desc->block_per_arena);
    if(io_buf == NULL) {
-      printk("file_write: sys_malloc for io_buf failed\n");
+      printk("file_read: sys_malloc for io_buf failed\n");
       goto file_read_error;
    }
 
@@ -295,11 +298,12 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
    uint32_t start_offset = file->fd_pos % BLOCK_SIZE;
    uint32_t end_sec = (file->fd_pos + size) / BLOCK_SIZE;
    uint32_t end_offset = (file->fd_pos + size) % BLOCK_SIZE;
-   // printk("file_read, all_blocks: %d\n", BLOCK_SIZE + 48);
    uint32_t* all_blocks = (uint32_t*)sys_malloc(BLOCK_SIZE + 48);
+   a = (struct arena*)((uint32_t)all_blocks & 0xfffff000);
+   // printk("blocks-> arena: 0x%x, cnt: %d l: %d bs: %d bs_cnt: %d\n", a, a->cnt, a->large, a->desc->block_size, a->desc->block_per_arena);
 
    if(all_blocks == NULL) {
-      printk("file_write: sys_malloc for all_blocks failed\n");
+      printk("file_read: sys_malloc for all_blocks failed\n");
       goto file_read_error;
    }
    int32_t block_lba = -1;
@@ -321,7 +325,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       // printk("file_read: %d -> %d\n", start_sec, all_blocks[start_sec]);
       disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
       memcpy(buf, io_buf+start_offset, size);
-      return size;
+      bytes_read = size;
    } else {
       // 跨扇区的情况
       // 先处理第一个扇区
@@ -340,9 +344,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       bytes_read += end_offset;
    }
 
-   printk("free all_blocks: %x\n", all_blocks);
    sys_free(all_blocks);
-   printk("free io_buf: %x\n", io_buf);
    sys_free(io_buf);
    file->fd_pos = file->fd_pos + bytes_read;
    return bytes_read;

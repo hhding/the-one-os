@@ -141,10 +141,6 @@ int update_thread_bitmap(enum pool_flags pf, uint32_t vaddr) {
 
     idx = (vaddr - thread_vaddr->vaddr_start) / PAGE_SIZE;
     ASSERT(idx > 0);
-    if(vaddr == 0x1000) {
-        printk("idx: %d %x\n", idx, (uint32_t)thread_vaddr->vaddr_bitmap.bits);
-        while(1);
-    }
 
     bitmap_set(&thread_vaddr->vaddr_bitmap, idx, 1);
     return 0;
@@ -219,7 +215,9 @@ struct arena* block2arena(struct mem_block* b) {
 }
 
 void* sys_malloc(uint32_t size) {
+    //printk("sys_malloc: size: %d\n", size);
     struct task_struct* cur = running_thread();
+    //printk("sys_malloc: small size: %d\n", size);
     struct pool* mem_pool;
     enum pool_flags PF;
     struct mem_block_desc* desc;
@@ -259,6 +257,7 @@ void* sys_malloc(uint32_t size) {
         for(a_idx = 0; a_idx < DESC_CNT; a_idx++) {
             if( size <= desc[a_idx].block_size ) break;
         }
+        //printk("sys_malloc: got a_idx %d\n", a_idx);
         // 分配内存块
         // 先看一下有没有空闲的
         if(list_empty(&desc[a_idx].free_list)) {
@@ -270,7 +269,6 @@ void* sys_malloc(uint32_t size) {
             memset(a, 0, PAGE_SIZE);
             a->desc = &desc[a_idx];
             a->cnt = desc[a_idx].block_per_arena;
-            printk("malloc: size: %d, a->cnt: %d\n", size, a->cnt);
             a->large = false;
             uint32_t b_idx;
             enum intr_status old_status = intr_disable();
@@ -361,7 +359,15 @@ void sys_free(void* ptr) {
         mfree_page(pf, a, a->cnt);
     } else {
         list_append(&a->desc->free_list, &b->free_elem);
-        if(++a->cnt == a->desc->block_per_arena) {
+        a->cnt++;
+        /*
+        sys_write(1, "sys_free: block_per_arena: ");
+        sys_putchar(a->desc->block_per_arena + 48);
+        sys_write(1, " cnt: ");
+        sys_putchar(a->cnt + 48);
+        sys_write(1, "\n");
+        */
+        if(a->cnt == a->desc->block_per_arena) {
             for(uint32_t i = 0; i < a->desc->block_per_arena; i++) {
                 b = arena2block(a, i);
                 ASSERT(elem_find(&a->desc->free_list, &b->free_elem));

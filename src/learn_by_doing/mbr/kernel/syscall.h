@@ -46,6 +46,7 @@ int32_t fork(void);
 void* malloc(uint32_t size);
 void free(void* ptr);
 int32_t open(const char* path, int flags);
+int32_t close(uint32_t fd);
 int32_t write(int32_t fd, char* str, uint32_t count);
 int32_t read(int32_t fd, char* str, uint32_t count);
 int32_t putchar(char c);

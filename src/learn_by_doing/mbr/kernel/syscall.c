@@ -88,3 +88,7 @@ int32_t open(const char* path, int flags) {
     return _syscall2(SYS_OPEN, path, flags);
 }
 
+int32_t close(uint32_t fd) {
+    return _syscall1(SYS_CLOSE, fd);
+}
+

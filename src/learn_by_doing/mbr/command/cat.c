@@ -16,16 +16,22 @@ int main(int argc, char** argv) {
     if(argv[1][0] != '/') {
         err_exit("cat: only absolute path is supported\n");
     }
+
+    printf("open %s for read\n", argv[1]);
     int fd = open(argv[1], O_RDONLY);
     if(fd == -1) {
         err_exit("cat: open file failed\n");
     }
+    printf("open fd: %d\n", fd);
     while(1) {
+        printf("3\n");
         cnt = read(fd, buf, 1024);
         if(cnt == -1) {
             break;
         }
+        printf("4\n");
         write(1, buf, cnt);
     }
+    printf("5\n");
     return 0;
 }

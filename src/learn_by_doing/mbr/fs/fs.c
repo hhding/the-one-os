@@ -197,6 +197,7 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
     sub_path = path_parse(sub_path, name);
 
     while(name[0]) {
+        printk("search_file: %s at %s..\n", name, search_record->search_path);
         // 记录一下当前处理的路径是什么
         strcat(search_record->search_path, "/");
         strcat(search_record->search_path, name);
@@ -205,8 +206,10 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
         if(!search_dir_entry(cur_part, parent_dir, name, &dir_e)) {
             // 没找到该 name，提前终止。
             // search_record->parent_dir 不关掉，后面创建文件要用
+            printk("search_file: search %s got nothing, ret -1\n", name);
             return -1;
         }
+        printk("search_file: search %s got something, check type\n", name);
 
         // 找到了文件，就结束。有可能是提前结束。先不管。
         if(FT_REGULAR == dir_e.f_type) {
@@ -267,11 +270,14 @@ void filesystem_init() {
 
 int32_t sys_open(const char* pathname, uint8_t flag) {
     int32_t fd = -1;
+    printk("sys_open: %s\n", pathname);
 
     // 先看下该文件是否已经存在
     struct path_search_record search_record;
     memset(&search_record, 0, sizeof(struct path_search_record));
+    printk("search_file\n");
     int32_t inode_no = search_file(pathname, &search_record);
+    printk("done search file..\n");
 
     // 先看一下目录层数对不对
     if(search_record.early_exit == 1) {

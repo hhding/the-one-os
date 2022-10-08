@@ -50,7 +50,7 @@ static void copy_body_stack3(struct task_struct* child_thread, struct task_struc
                     prog_vaddr = (idx_byte * 8 + idx_bit) * PAGE_SIZE + vaddr_start;
                     memcpy(buf_page, (void *)prog_vaddr, PAGE_SIZE);
                     page_dir_activate(child_thread);
-                    printk("fork: new page 0x%x\n", prog_vaddr);
+                    // printk("fork: new page 0x%x\n", prog_vaddr);
                     get_a_page(PF_USER, prog_vaddr, 0);
                     memcpy((void *)prog_vaddr, buf_page, PAGE_SIZE);
                     page_dir_activate(parent_thread);

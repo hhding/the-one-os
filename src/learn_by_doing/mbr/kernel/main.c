@@ -92,6 +92,11 @@ void __attribute__((optimize("O0"))) u_prog_a(void) {
 void __attribute__((optimize("O0"))) u_prog_b(void) {
     test_var_b = getpid();
     printf("u_prog_b: pid<%d>\n", test_var_b);
+    int fd = open("/testfile", O_CREAT | O_WRONLY);
+    if(fd != -1) {
+        write(fd, "hello world", 11);
+        close(fd);
+    }
     while(1);
 }
 
@@ -119,6 +124,7 @@ void init_syscall() {
     register_syscall(SYS_EXECV, sys_execv);
     register_syscall(SYS_WAIT, sys_wait);
     register_syscall(SYS_EXIT, sys_exit);
+    register_syscall(SYS_CLOSE, sys_close);
     printk("syscall init done\n");
 }
 

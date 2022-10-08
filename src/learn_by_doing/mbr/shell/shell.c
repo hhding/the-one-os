@@ -73,7 +73,7 @@ void run_external(int argc, char** argv) {
             printf("shell: stat %s failed\n", final_path);
             exit(0);
         } else {
-            printf("execv %s\n", argv[0]);
+            // printf("execv %s\n", argv[0]);
             execv(argv[0], argv);
         }
     }

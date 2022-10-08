@@ -106,7 +106,7 @@ uint32_t* create_page_dir(void) {
     // memcpy((uint32_t*)((uint32_t)page_dir_vaddr), (uint32_t*)(0xfffff000), 4);
     // 拷过来的页目录，其中最后一项应该改成指向其自己
     uint32_t phy_addr = addr_v2p((uint32_t)page_dir_vaddr);
-    printk("create_page_dir<vaddr/phy_addr>: 0x%x / 0x%x\n", (uint32_t)page_dir_vaddr, (uint32_t)phy_addr);
+    // printk("create_page_dir<vaddr/phy_addr>: 0x%x / 0x%x\n", (uint32_t)page_dir_vaddr, (uint32_t)phy_addr);
     page_dir_vaddr[1023] = phy_addr | PG_US_U | PG_RW_W | PG_P_1;
     return page_dir_vaddr;
 }
