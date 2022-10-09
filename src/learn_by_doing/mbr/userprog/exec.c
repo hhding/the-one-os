@@ -85,21 +85,28 @@ int32_t load(const char* path) {
 
     for(uint32_t prog_idx=0; prog_idx < elf_header.e_phnum; 
         prog_idx++, prog_header_offset += elf_header.e_phentsize) {
+        printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
+        // printk("load: seek to %d\n", prog_header_offset);
         sys_lseek(fd, prog_header_offset, SEEK_SET);
+        // printk("load: read prog header size: %d\n", prog_header_size);
         if(sys_read(fd, &prog_header, prog_header_size) != prog_header_size) {
+            printk("load: err: read size not equal to prog_header_size\n");
             goto load_done;
         }
+        // printk("load: check prog type\n");
         if(PT_LOAD == prog_header.p_type) {
-            //printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
+            printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
             if(!segment_load(fd, prog_header.p_offset, prog_header.p_filesz, prog_header.p_vaddr)) {
-            //    printk("segment_load failed\n");
+                printk("segment_load failed\n");
                 goto load_done;
             }
-            //printk("segment_load success\n");
+            // printk("segment_load success\n");
+        } else {
+            printk("skip unknown prog type: %d\n", prog_header.p_type);
         }
     }
     ret = elf_header.e_entry;
-    //printk("%s entry: %x\n", path, ret);
+    printk("%s entry: %x\n", path, ret);
 load_done:
     sys_close(fd);
     return ret;

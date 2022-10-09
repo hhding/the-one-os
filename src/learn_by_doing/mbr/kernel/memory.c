@@ -215,9 +215,11 @@ struct arena* block2arena(struct mem_block* b) {
 }
 
 void* sys_malloc(uint32_t size) {
-    //printk("sys_malloc: size: %d\n", size);
     struct task_struct* cur = running_thread();
-    //printk("sys_malloc: small size: %d\n", size);
+    //char buf[128] = {0};
+    //sprintf(buf, "sys_malloc: size %d\n", size);
+    //sprintf(buf, "sys_malloc: %s magic: %d size: %d pid: %d\n", cur->name, cur->stack_magic, size, cur->pid);
+    //stdout_write(buf);
     struct pool* mem_pool;
     enum pool_flags PF;
     struct mem_block_desc* desc;
@@ -257,15 +259,18 @@ void* sys_malloc(uint32_t size) {
         for(a_idx = 0; a_idx < DESC_CNT; a_idx++) {
             if( size <= desc[a_idx].block_size ) break;
         }
-        //printk("sys_malloc: got a_idx %d\n", a_idx);
         // 分配内存块
         // 先看一下有没有空闲的
+        // printk("sys_malloc: got a_idx %d, size: %d\n", a_idx, size);
+        ASSERT(cur->stack_magic == 20220120);
         if(list_empty(&desc[a_idx].free_list)) {
             a = malloc_page(PF, 1);
             if(a == NULL) {
+                //printk("sys_malloc: al1locate page failed\n");
                 lock_release(&mem_pool->lock);
                 return NULL;
             }
+            //printk("sys_malloc: al1locate page success\n");
             memset(a, 0, PAGE_SIZE);
             a->desc = &desc[a_idx];
             a->cnt = desc[a_idx].block_per_arena;
@@ -279,8 +284,31 @@ void* sys_malloc(uint32_t size) {
             }
             intr_set_status(old_status);
         }
+        if(a_idx == 5) printk("sys_malloc: pid: %d list_pop idx: %d 0x%x\n", cur->pid, a_idx, desc[a_idx].free_list.head.next);
+        struct list* plist = &desc[a_idx].free_list;
+        struct list_elem* elem = plist->head.next;
+        /*
+        if(((uint32_t*)elem)[0] == 0) {
+            printk("error detected. handle by your self\n");
+            while(1);
+        }
+        */
+        if(a_idx == 5) stdout_write("   elem:");
+        while(elem != &plist->tail) {
+            if(a_idx == 5) printk(" %x", elem);
+            if(elem == NULL) {
+                printk("\nunexpected null detected\n");
+                while(1);
+            }
+            elem = elem->next;
+        }
+        if(a_idx == 5) stdout_write("\n");
+        // if(a_idx == 5) printk("sys_malloc: # free_list: %d\n", list_len(&desc[a_idx].free_list));
+        //printk("sys_malloc: free_list is ready\n");
         struct list_elem * l = list_pop(&(desc[a_idx].free_list));
+        //printk("sys_malloc: list_elem: 0x%x\n", l);
         b = elem2entry(struct mem_block, free_elem, l);
+        //printk("sys_malloc: b: %x\n", b);
         a = block2arena(b);
         a->cnt--;
         lock_release(&mem_pool->lock);
@@ -360,13 +388,6 @@ void sys_free(void* ptr) {
     } else {
         list_append(&a->desc->free_list, &b->free_elem);
         a->cnt++;
-        /*
-        sys_write(1, "sys_free: block_per_arena: ");
-        sys_putchar(a->desc->block_per_arena + 48);
-        sys_write(1, " cnt: ");
-        sys_putchar(a->cnt + 48);
-        sys_write(1, "\n");
-        */
         if(a->cnt == a->desc->block_per_arena) {
             for(uint32_t i = 0; i < a->desc->block_per_arena; i++) {
                 b = arena2block(a, i);

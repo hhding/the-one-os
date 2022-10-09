@@ -20,7 +20,9 @@ int vsprintf(char* buf, const char* format, va_list arg) {
     char* tmp_ptr = NULL;
     char ch;
 
+    //stdout_write(format);
     while (( ch = *format++ )) {
+        //sys_putchar(ch);
         if ('%' == ch) {
             switch ((ch = *format++)) {
                 case '%':
@@ -63,13 +65,14 @@ int sprintf(char *str, const char *format, ...) {
 
 int printf(const char* format, ...)
 {
-    char buf[1024] = {0};
+    char buf[128] = {0};
     va_list args;
 
     // arg 指向了 format
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
+    // user space, do it via syscall
     return write(1, buf, strlen(buf));
 }
 

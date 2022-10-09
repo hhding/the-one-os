@@ -48,7 +48,7 @@ bool search_dir_entry(struct partition* part, struct dir* pdir, const char* name
     struct dir_entry *p_de = (struct dir_entry *)buf;
     uint32_t dir_entry_size = part->sb->dir_entry_size;
     uint32_t dir_entry_cnt = SECTOR_SIZE / dir_entry_size;
-    printk("4 block_cnt: %d\n", block_cnt);
+    // printk("4 block_cnt: %d\n", block_cnt);
     for(block_idx=0; block_idx<block_cnt; block_idx++) {
         if(all_blocks[block_idx] == 0) continue;
         disk_read(part->my_disk, all_blocks[block_idx], buf, 1);

@@ -205,8 +205,9 @@ static void identify_disk(struct disk* hd) {
     printk("    SECTORS: %d\n", sector_cnt);
     printk("    CAPACITY: %dMiB\n", sector_cnt*512/ 1024/1024);
 
-    char* p = sys_malloc(262144);
-    disk_read(hd, 0, p, 1);
+    // this is for test? comment out.
+    // char* p = sys_malloc(262144);
+    // disk_read(hd, 0, p, 1);
 }
 
 static void partition_scan(struct disk* hd) {

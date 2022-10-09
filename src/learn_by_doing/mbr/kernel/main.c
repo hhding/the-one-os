@@ -131,7 +131,7 @@ void init_syscall() {
 void main()
 {
     console_init();
-    printk("\n\n");
+    stdout_write("\n\n");
     idt_init();
     mem_init();
     thread_init();

@@ -114,7 +114,7 @@ int stdout_write(char *s) {
 }
 
 int printk(char* format, ...) {
-    char buf[1024] = {0};
+    char buf[128] = {0};
     va_list args;
 
     // arg 指向了 format
