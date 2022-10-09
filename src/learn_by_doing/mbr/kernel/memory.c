@@ -216,10 +216,7 @@ struct arena* block2arena(struct mem_block* b) {
 
 void* sys_malloc(uint32_t size) {
     struct task_struct* cur = running_thread();
-    //char buf[128] = {0};
-    //sprintf(buf, "sys_malloc: size %d\n", size);
-    //sprintf(buf, "sys_malloc: %s magic: %d size: %d pid: %d\n", cur->name, cur->stack_magic, size, cur->pid);
-    //stdout_write(buf);
+    // printk("sys_malloc: name: %s pid: %d size: %d\n", cur->name, cur->pid, size);
     struct pool* mem_pool;
     enum pool_flags PF;
     struct mem_block_desc* desc;
@@ -284,25 +281,19 @@ void* sys_malloc(uint32_t size) {
             }
             intr_set_status(old_status);
         }
-        if(a_idx == 5) printk("sys_malloc: pid: %d list_pop idx: %d 0x%x\n", cur->pid, a_idx, desc[a_idx].free_list.head.next);
+        //if(a_idx == 5) printk("sys_malloc: %s pid: %d size: %d 0x%x\n", cur->name, cur->pid, size, desc[a_idx].free_list.head.next);
         struct list* plist = &desc[a_idx].free_list;
         struct list_elem* elem = plist->head.next;
-        /*
-        if(((uint32_t*)elem)[0] == 0) {
-            printk("error detected. handle by your self\n");
-            while(1);
-        }
-        */
-        if(a_idx == 5) stdout_write("   elem:");
+        //if(a_idx == 5) printk(" sys_malloc %d elem:", cur->pid);
         while(elem != &plist->tail) {
-            if(a_idx == 5) printk(" %x", elem);
+            //if(a_idx == 5) printk(" %x", elem);
             if(elem == NULL) {
-                printk("\nunexpected null detected\n");
+                printk("\npid: %d stackoverflow detected\n", cur->pid);
                 while(1);
             }
             elem = elem->next;
         }
-        if(a_idx == 5) stdout_write("\n");
+        //if(a_idx == 5) stdout_write("\n");
         // if(a_idx == 5) printk("sys_malloc: # free_list: %d\n", list_len(&desc[a_idx].free_list));
         //printk("sys_malloc: free_list is ready\n");
         struct list_elem * l = list_pop(&(desc[a_idx].free_list));
@@ -313,6 +304,7 @@ void* sys_malloc(uint32_t size) {
         a->cnt--;
         lock_release(&mem_pool->lock);
         // printk("malloc size: %d %x\n", size, (uint32_t)b);
+        // printk("sys_malloc: ret 0x%x\n", b);
         return (void*)b;
     }
 }

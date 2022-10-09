@@ -275,7 +275,7 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
 }
 
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
-   printk("--> file_read: ino: %d size: %d\n", file->fd_inode->i_no, count);
+   // printk("--> file_read: ino: %d size: %d\n", file->fd_inode->i_no, count);
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
    ASSERT(io_buf != NULL);
    struct arena* a = (struct arena*)((uint32_t)io_buf & 0xfffff000);
@@ -292,6 +292,7 @@ int32_t file_read(struct file* file, void* buf, uint32_t count) {
       size = file->fd_inode->i_size - file->fd_pos;
    }
 
+   // printk(">>> file_read: io_buf: %x prev: %x, next: %x\n", io_buf, ((uint32_t*)io_buf)[128], ((uint32_t*)io_buf)[129]);
    // printk("file_read: ino: %d, pos: %d, file_size:%d, size: %d\n", file->fd_inode->i_no, file->fd_pos, file->fd_inode->i_size, size);
    if(size == 0) return 0;
 

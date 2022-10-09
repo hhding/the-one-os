@@ -106,7 +106,7 @@ int32_t load(const char* path) {
         }
     }
     ret = elf_header.e_entry;
-    printk("%s entry: %x\n", path, ret);
+    printk("load %s entry: %x\n", path, ret);
 load_done:
     sys_close(fd);
     return ret;
@@ -120,6 +120,15 @@ int32_t sys_execv(const char* path, const char* argv[]) {
     if(entry_point == -1) return -1;
 
     struct task_struct* cur = running_thread();
+    struct mem_block_desc* mb = cur->u_block_desc;
+    for(int i=0; i<7; i++) {
+        printk("%d. %d %d %x\n", i, mb[i].block_size, mb[i].block_per_arena, mb[i].free_list.head.next);
+    }
+    block_desc_init(cur->u_block_desc);
+    for(int i=0; i<7; i++) {
+        printk("%d. %d %d %x\n", i, mb[i].block_size, mb[i].block_per_arena, mb[i].free_list.head.next);
+    }
+
     memcpy(cur->name, path, TASK_NAME_LEN);
     struct intr_stack* intr_0_stack = (struct intr_stack*)((uint32_t)cur + PAGE_SIZE - sizeof(struct intr_stack));
     intr_0_stack->ebx = (int32_t)argv;

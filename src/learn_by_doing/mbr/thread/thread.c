@@ -212,7 +212,7 @@ void thread_init(void) {
 
 void release_pid(pid_t pid) {
     lock_acquire(&pid_pool.pid_lock);
-    bitmap_set(&pid_pool.pid_bitmap, pid_pool.pid_start, 0);
+    bitmap_set(&pid_pool.pid_bitmap, pid - pid_pool.pid_start, 0);
     lock_release(&pid_pool.pid_lock);
 }
 

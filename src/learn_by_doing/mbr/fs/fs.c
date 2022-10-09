@@ -209,7 +209,7 @@ static int32_t search_file(const char* pathname, struct path_search_record* sear
             // printk("search_file: search %s got nothing, ret -1\n", name);
             return -1;
         }
-        // printk("search_file: search %s got something, check type\n", name);
+        // printk("search_file: search %s, file?\n", name);
 
         // 找到了文件，就结束。有可能是提前结束。先不管。
         if(FT_REGULAR == dir_e.f_type) {

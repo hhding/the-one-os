@@ -60,10 +60,12 @@ static int32_t cmd_parse(char* cmd_str, char** argv, char token) {
 }
 
 void run_external(int argc, char** argv) {
-    pid_t pid = fork();
     int32_t status;
+    pid_t pid = fork();
     if(pid) {
+        printf("wait child %d exit\n", pid);
         wait(&status);
+        printf("child exit with %d\n", status);
     } else {
         make_abs_path(argv[0]);
         argv[0] = final_path;

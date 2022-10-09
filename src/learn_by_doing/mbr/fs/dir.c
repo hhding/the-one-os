@@ -42,28 +42,28 @@ bool search_dir_entry(struct partition* part, struct dir* pdir, const char* name
         disk_read(part->my_disk, pdir->inode->i_sectors[12], all_blocks + 12, 1);
     }
 
-    printk("search_dir_entry: malloc for buf..\n");
-    uint8_t *buf = (uint8_t *)sys_malloc(SECTOR_SIZE);
-    ASSERT(buf != NULL);
-    struct dir_entry *p_de = (struct dir_entry *)buf;
+    printk("search_dir_entry: malloc for io_buf\n");
+    uint8_t *io_buf = (uint8_t *)sys_malloc(SECTOR_SIZE);
+    ASSERT(io_buf != NULL);
+    memset(io_buf, 0, SECTOR_SIZE);
+    struct dir_entry *p_de = (struct dir_entry *)io_buf;
     uint32_t dir_entry_size = part->sb->dir_entry_size;
     uint32_t dir_entry_cnt = SECTOR_SIZE / dir_entry_size;
-    // printk("4 block_cnt: %d\n", block_cnt);
+
     for(block_idx=0; block_idx<block_cnt; block_idx++) {
         if(all_blocks[block_idx] == 0) continue;
-        disk_read(part->my_disk, all_blocks[block_idx], buf, 1);
+        disk_read(part->my_disk, all_blocks[block_idx], io_buf, 1);
         for (uint32_t dir_entry_idx = 0; dir_entry_idx < dir_entry_cnt; dir_entry_idx++) {
             if(!strcmp((p_de + dir_entry_idx)->filename, name)) {
                 memcpy(dir_e, p_de + dir_entry_idx, dir_entry_size);
-                sys_free(buf);
+                sys_free(io_buf);
                 sys_free(all_blocks);
                 return true;
             }
         }
-        memset(buf, 0, SECTOR_SIZE);
+        memset(io_buf, 0, SECTOR_SIZE);
     }
-    printk("5\n");
-    sys_free(buf);
+    sys_free(io_buf);
     sys_free(all_blocks);
     return false;
 }
