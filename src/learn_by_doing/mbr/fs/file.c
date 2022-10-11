@@ -100,7 +100,6 @@ int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flag) {
    inode_init(inode_no, new_file_inode);
    int fd_idx = get_free_slot_in_global();
    if(fd_idx == -1) {
-      printk("exceed max open files\n");
       rollback_step = 2;
       goto rollback;
    }
@@ -145,7 +144,6 @@ rollback:
 int32_t file_open(uint32_t inode_no, uint8_t flag) {
    int fd_idx = get_free_slot_in_global();
    if(fd_idx == -1) {
-      printk("exceed max open files\n");
       return -1;
    }
    file_table[fd_idx].fd_inode = inode_open(cur_part, inode_no);

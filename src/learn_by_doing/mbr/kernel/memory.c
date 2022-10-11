@@ -410,7 +410,7 @@ void mem_init() {
     block_desc_init(k_block_desc);
     uint32_t* pde = pde_ptr(0);
     // dirty fix, release the first 1 MB from virtual addr in kernel space.
-    printk("pde: %x pde[0]: %x *pde: %x\n", pde[1023], pde[0], *pde);
+    // printk("pde: %x pde[0]: %x *pde: %x\n", pde[1023], pde[0], *pde);
     pde[0] = 0;
     asm volatile ("movl %0, %%cr3" : : "r" (pde[1023]) : "memory");
     printk("memory_init done\n");

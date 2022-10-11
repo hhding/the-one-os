@@ -121,11 +121,6 @@ int32_t copy_process(struct task_struct* child_thread, struct task_struct* paren
     build_child_stack(child_thread);
     update_inode_open_cnts(child_thread);
     block_desc_init(child_thread->u_block_desc);
-    struct mem_block_desc* mb = child_thread->u_block_desc;
-    for(int i=0; i<7; i++) {
-        printk("%d. %d %d\n", i, mb[i].block_size, mb[i].block_per_arena);
-    }
-
     mfree_page(PF_KERNEL, buf_page, 1);
     return 0;
 }

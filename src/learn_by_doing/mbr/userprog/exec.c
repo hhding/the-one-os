@@ -85,17 +85,17 @@ int32_t load(const char* path) {
 
     for(uint32_t prog_idx=0; prog_idx < elf_header.e_phnum; 
         prog_idx++, prog_header_offset += elf_header.e_phentsize) {
-        printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
+        // printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
         // printk("load: seek to %d\n", prog_header_offset);
         sys_lseek(fd, prog_header_offset, SEEK_SET);
         // printk("load: read prog header size: %d\n", prog_header_size);
         if(sys_read(fd, &prog_header, prog_header_size) != prog_header_size) {
-            printk("load: err: read size not equal to prog_header_size\n");
+            // printk("load: err: read size not equal to prog_header_size\n");
             goto load_done;
         }
         // printk("load: check prog type\n");
         if(PT_LOAD == prog_header.p_type) {
-            printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
+            // printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
             if(!segment_load(fd, prog_header.p_offset, prog_header.p_filesz, prog_header.p_vaddr)) {
                 printk("segment_load failed\n");
                 goto load_done;
@@ -106,7 +106,7 @@ int32_t load(const char* path) {
         }
     }
     ret = elf_header.e_entry;
-    printk("load %s entry: %x\n", path, ret);
+    // printk("load %s entry: %x\n", path, ret);
 load_done:
     sys_close(fd);
     return ret;
@@ -120,15 +120,7 @@ int32_t sys_execv(const char* path, const char* argv[]) {
     if(entry_point == -1) return -1;
 
     struct task_struct* cur = running_thread();
-    struct mem_block_desc* mb = cur->u_block_desc;
-    for(int i=0; i<7; i++) {
-        printk("%d. %d %d %x\n", i, mb[i].block_size, mb[i].block_per_arena, mb[i].free_list.head.next);
-    }
     block_desc_init(cur->u_block_desc);
-    for(int i=0; i<7; i++) {
-        printk("%d. %d %d %x\n", i, mb[i].block_size, mb[i].block_per_arena, mb[i].free_list.head.next);
-    }
-
     memcpy(cur->name, path, TASK_NAME_LEN);
     struct intr_stack* intr_0_stack = (struct intr_stack*)((uint32_t)cur + PAGE_SIZE - sizeof(struct intr_stack));
     intr_0_stack->ebx = (int32_t)argv;

@@ -42,7 +42,7 @@ bool search_dir_entry(struct partition* part, struct dir* pdir, const char* name
         disk_read(part->my_disk, pdir->inode->i_sectors[12], all_blocks + 12, 1);
     }
 
-    printk("search_dir_entry: malloc for io_buf\n");
+    //printk("search_dir_entry: malloc for io_buf\n");
     uint8_t *io_buf = (uint8_t *)sys_malloc(SECTOR_SIZE);
     ASSERT(io_buf != NULL);
     memset(io_buf, 0, SECTOR_SIZE);
