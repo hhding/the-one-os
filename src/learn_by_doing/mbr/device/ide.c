@@ -108,14 +108,18 @@ static bool busy_wait(struct disk* hd) {
     return false;
 }
 
-static void read_buffer(struct disk* hd, void* buf, uint8_t cnt) {
+void read_buffer(struct disk* hd, void* buf, uint8_t cnt) {
+    char* buf_p = buf;
     uint32_t size = 512 * (cnt==0? 256: cnt);
-    insw(reg_data(hd->my_channel), buf, size / 2);
+    //printk("  read_buffer: size: %d, buf_p: %x flag: %x\n", size, buf_p, ((uint32_t*)&(buf_p[512]))[1]);
+    insw(reg_data(hd->my_channel), buf_p, size / 2);
+    //printk("  read_buffer: size: %d, buf_p: %x flag: %x\n", size, buf_p, ((uint32_t*)&(buf_p[512]))[1]);
 }
 
 static void write_buffer(struct disk* hd, void* buf, uint8_t cnt) {
+    char* buf_p = buf;
     uint32_t size = 512 * (cnt==0? 256: cnt);
-    outsw(reg_data(hd->my_channel), buf, size / 2);
+    outsw(reg_data(hd->my_channel), buf_p, size / 2);
 }
 
 static char* le2be(const char* src, char* buf, uint32_t len) {
@@ -129,15 +133,14 @@ static char* le2be(const char* src, char* buf, uint32_t len) {
 }
 
 void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt) {
-    uint32_t sector_done = 0;
-    uint32_t sector_size = 0;
+    uint32_t left = sector_cnt;
+    uint32_t local_lba = lba;
+    char* buf_p = (char*)buffer;
 
     lock_acquire(&hd->my_channel->lock);
 
-    do {
-        sector_size = sector_cnt - sector_done;
-        sector_size = sector_size > 256? 256: sector_size;
-        set_disk_sector(hd, lba + sector_done, sector_size);
+    while(left) {
+        set_disk_sector(hd, local_lba, 1);
         cmd_out(hd->my_channel, CMD_READ_SECTOR);
         sema_down(&hd->my_channel->disk_done);
 
@@ -148,9 +151,12 @@ void disk_read(struct disk* hd, uint32_t lba, void* buffer, uint32_t sector_cnt)
                     hd->name, lba, sector_cnt);
             PANIC(error);
         }
-        read_buffer(hd, (void*)((uint32_t)buffer + sector_done * 512), sector_size);
-        sector_done += sector_size;
-    } while(sector_done < sector_cnt);
+        //printk("   do disk_read: read to %x, orig: %x\n", buf_p, (uint32_t)buffer);
+        read_buffer(hd, (void*)buf_p, 1);
+        left--;
+        local_lba++;
+        buf_p += 512;
+    };
 
     lock_release(&hd->my_channel->lock);
 }

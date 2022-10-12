@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "sync.h"
 #include "interrupt.h"
+#include "process.h"
 
 #define PAGE_SIZE 4096
 
@@ -103,6 +104,8 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
         page_table_add((void*)vaddr, page_phyaddr);
         vaddr += PAGE_SIZE;
     }
+    page_dir_activate(running_thread());
+    
     return vaddr_start;
 }
 
@@ -214,6 +217,28 @@ struct arena* block2arena(struct mem_block* b) {
     return (struct arena*)((uint32_t)b & 0xFFFFF000);
 }
 
+static void memory_check(struct mem_block_desc* desc) {
+    struct list* plist = &desc->free_list;
+    struct list_elem* head = &plist->head;
+    struct list_elem* tail = &plist->tail;
+    // ASSERT((uint32_t)head & 0xfffff000 == (uint32_t)tail & 0xfffff000);
+    struct list_elem* elem = head->next;
+    if(elem == tail) return;
+    //uint32_t base_page_addr =  ((uint32_t)elem) & 0xfffff000;
+
+    while(elem != &plist->tail) {
+        if((uint32_t)elem->next->prev != (uint32_t)elem) {
+            printk("memory_check: size: %d %x<-%x->%x\n", desc->block_size, elem->prev, elem, elem->next);
+            printk("memory_check: %x<-%x->%x\n", elem->next->prev, elem->next, elem->next->next);
+            while(1);
+        }
+        elem = elem->next;
+    }
+}
+bool show_ref1(struct list_elem* elem, int arg){
+    printk(">> %x %x %x\n", elem->prev, elem, elem->next);
+    return false;
+}
 void* sys_malloc(uint32_t size) {
     struct task_struct* cur = running_thread();
     // printk("sys_malloc: name: %s pid: %d size: %d\n", cur->name, cur->pid, size);
@@ -258,8 +283,8 @@ void* sys_malloc(uint32_t size) {
         }
         // 分配内存块
         // 先看一下有没有空闲的
-        // printk("sys_malloc: got a_idx %d, size: %d\n", a_idx, size);
         ASSERT(cur->stack_magic == 20220120);
+        // printk("sys_malloc: got a_idx %d, size: %d\n", a_idx, size);
         if(list_empty(&desc[a_idx].free_list)) {
             a = malloc_page(PF, 1);
             if(a == NULL) {
@@ -267,7 +292,6 @@ void* sys_malloc(uint32_t size) {
                 lock_release(&mem_pool->lock);
                 return NULL;
             }
-            //printk("sys_malloc: al1locate page success\n");
             memset(a, 0, PAGE_SIZE);
             a->desc = &desc[a_idx];
             a->cnt = desc[a_idx].block_per_arena;
@@ -281,20 +305,17 @@ void* sys_malloc(uint32_t size) {
             }
             intr_set_status(old_status);
         }
-        //if(a_idx == 5) printk("sys_malloc: %s pid: %d size: %d 0x%x\n", cur->name, cur->pid, size, desc[a_idx].free_list.head.next);
-        struct list* plist = &desc[a_idx].free_list;
-        struct list_elem* elem = plist->head.next;
-        //if(a_idx == 5) printk(" sys_malloc %d elem:", cur->pid);
-        while(elem != &plist->tail) {
-            //if(a_idx == 5) printk(" %x", elem);
-            if(elem == NULL) {
-                printk("\npid: %d stackoverflow detected\n", cur->pid);
-                while(1);
+        memory_check(&desc[a_idx]);
+        /*
+        if(cur->pgdir) {
+            struct mem_block_desc* desc_p = cur->u_block_desc;
+            for(int idx=0; idx <7; idx++) {
+                struct list* plist = &desc_p[idx].free_list;
+                printk("show all mem_blocks %x: %d\n", plist, idx);
+                list_traversal(plist, show_ref1, 0);
             }
-            elem = elem->next;
         }
-        //if(a_idx == 5) stdout_write("\n");
-        // if(a_idx == 5) printk("sys_malloc: # free_list: %d\n", list_len(&desc[a_idx].free_list));
+        */
         //printk("sys_malloc: free_list is ready\n");
         struct list_elem * l = list_pop(&(desc[a_idx].free_list));
         //printk("sys_malloc: list_elem: 0x%x\n", l);
@@ -304,7 +325,7 @@ void* sys_malloc(uint32_t size) {
         a->cnt--;
         lock_release(&mem_pool->lock);
         // printk("malloc size: %d %x\n", size, (uint32_t)b);
-        // printk("sys_malloc: ret 0x%x\n", b);
+        //printk("sys_malloc: ret %x from %d, prev: %x next: %x, total: %d\n", b, desc[a_idx].block_size, l->prev, l->next, list_len(&desc[a_idx].free_list));
         return (void*)b;
     }
 }
@@ -378,18 +399,20 @@ void sys_free(void* ptr) {
     if(a->large == true && a->desc == NULL) {
         mfree_page(pf, a, a->cnt);
     } else {
-        //printk("append %x %x\n", b, ptr);
         list_append(&a->desc->free_list, &b->free_elem);
         a->cnt++;
         if(a->cnt == a->desc->block_per_arena) {
             for(uint32_t i = 0; i < a->desc->block_per_arena; i++) {
                 b = arena2block(a, i);
-                //printk("%d. %x\n", i, b);
+                // printk("sys_free: list_rm %d. %x<-%x->%x\n", i, b->free_elem.prev, b, b->free_elem.next);
                 ASSERT(elem_find(&a->desc->free_list, &b->free_elem));
                 list_remove(&b->free_elem);
             }
+            // printk("sys_free: release page %x\n", a);
             mfree_page(pf, a, 1);
         }
+        memory_check(a->desc);
+        //printk("Total %d elements in %d desc\n", list_len(&a->desc->free_list), a->desc->block_size);
     }
     lock_release(&mem_pool->lock);
 }

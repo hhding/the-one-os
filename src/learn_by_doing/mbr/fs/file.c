@@ -281,23 +281,34 @@ uint32_t bmap(struct file* file, void* iobuf) {
 }
 
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
-   // printk("--> file_read: ino: %d size: %d\n", file->fd_inode->i_no, count);
+   //printk("--> file_read: ino: %d to: %x size: %d\n", file->fd_inode->i_no, buf, count);
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
    ASSERT(io_buf != NULL);
-   uint8_t * p = (uint8_t*)buf;
+   uint32_t buf_v = ((uint32_t*)&(io_buf[512]))[1];
+   //printk("io_buf init value: %x\n", buf_v);
+   uint8_t *p = (uint8_t*)buf;
+   uint8_t *io_buf_p = NULL;
+   uint32_t bytes_read = 0;
 
    uint32_t left = count;
+   uint32_t max_count = file->fd_inode->i_size - file->fd_pos;
+   if(max_count == 0) goto read_done;
+   left = left > max_count? max_count: left;
+
    while(left) {
+      io_buf_p = io_buf;
       uint32_t nr = bmap(file, io_buf);
       disk_read(cur_part->my_disk, nr, io_buf, 1);
       uint32_t offset = file->fd_pos % BLOCK_SIZE;
       uint32_t size = left > (BLOCK_SIZE - offset) ? (BLOCK_SIZE - offset) : left;
       file->fd_pos += size;
       left -= size;
-      uint8_t * io_buf_p = io_buf + offset;
+      bytes_read += size;
+      io_buf_p += offset;
       while(size--) *p++ = *io_buf_p++;
    }
 
+read_done:
    sys_free(io_buf);
-   return count;
+   return bytes_read;
 }

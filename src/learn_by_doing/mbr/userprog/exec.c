@@ -44,19 +44,40 @@ enum segment_type {
     PT_PHDR,
 };
 
-static bool segment_load(int32_t fd, uint32_t offset, uint32_t filesz, uint32_t vaddr) {
+bool show_ref(struct list_elem* elem, int arg){
+    printk(">> %x %x %x\n", elem->prev, elem, elem->next);
+    return false;
+}
+void my_break(char* message) {
+    printk(message);
+}
+
+bool segment_load(int32_t fd, uint32_t offset, uint32_t filesz, uint32_t vaddr) {
     uint32_t page_cnt = DIV_ROUND_UP((vaddr & 0x00000fff) + filesz, PAGE_SIZE);
-    printk("segment_load: for %x, cnt: %d\n", vaddr, page_cnt);
+    printk("segment_load: for %x, cnt: %d size: %d\n", vaddr, page_cnt, filesz);
     uint32_t vaddr_page = vaddr & 0xfffff000;
     for(uint32_t page_idx = 0; page_idx < page_cnt; page_idx++) {
         uint32_t *pde = pde_ptr(vaddr_page);
         uint32_t *pte = pte_ptr(vaddr_page);
         if(!(*pde & 0x00000001) || !(*pte & 0x00000001)) {
-            //printk("allocate page for %x, idx: %d\n", vaddr_page, page_idx);
-            if(get_a_page(PF_USER, vaddr_page, 1) == NULL) return false;
+            if(get_a_page(PF_USER, vaddr_page, 1) == NULL) {
+                printk("segment_load: get_a_page for %x failed\n", vaddr_page);
+                return false;
+            }
+        }else{
+            printk("address %x already in use\n", vaddr_page);
         }
         vaddr_page += PAGE_SIZE;
     }
+    /*
+    struct task_struct* cur = running_thread();
+    struct mem_block_desc* desc_p = cur->u_block_desc;
+    for(int idx=0; idx <7; idx++) {
+        printk("show all mem_blocks: %d\n", idx);
+        struct list* plist = &desc_p[idx].free_list;
+        list_traversal(plist, show_ref, 0);
+    }
+    */
     sys_lseek(fd, offset, SEEK_SET);
     sys_read(fd, (void*)vaddr, filesz);
     return true;
@@ -85,15 +106,11 @@ int32_t load(const char* path) {
 
     for(uint32_t prog_idx=0; prog_idx < elf_header.e_phnum; 
         prog_idx++, prog_header_offset += elf_header.e_phentsize) {
-        printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
-        printk("load: seek to %d\n", prog_header_offset);
         sys_lseek(fd, prog_header_offset, SEEK_SET);
-        printk("load: read prog header size: %d\n", prog_header_size);
         if(sys_read(fd, &prog_header, prog_header_size) != prog_header_size) {
             printk("load: err: read size not equal to prog_header_size\n");
             goto load_done;
         }
-        printk("load: check prog type\n");
         if(PT_LOAD == prog_header.p_type) {
             // printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
             if(!segment_load(fd, prog_header.p_offset, prog_header.p_filesz, prog_header.p_vaddr)) {
@@ -102,7 +119,7 @@ int32_t load(const char* path) {
             }
             // printk("segment_load success\n");
         } else {
-            printk("skip unknown prog type: %d\n", prog_header.p_type);
+            printk("skip unknown prog type: 0x%x\n", prog_header.p_type);
         }
     }
     ret = elf_header.e_entry;
