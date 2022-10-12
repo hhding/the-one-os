@@ -326,7 +326,7 @@ sys_open_err:
 }
 
 /* 将文件描述符转化为文件表的下标 */
-static uint32_t fd_local2global(uint32_t local_fd) {
+uint32_t fd_local2global(uint32_t local_fd) {
    struct task_struct* cur = running_thread();
    int32_t global_fd = cur->fd_table[local_fd];  
    ASSERT(global_fd >= 0 && global_fd < MAX_FILE_OPEN);

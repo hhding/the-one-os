@@ -378,11 +378,13 @@ void sys_free(void* ptr) {
     if(a->large == true && a->desc == NULL) {
         mfree_page(pf, a, a->cnt);
     } else {
+        //printk("append %x %x\n", b, ptr);
         list_append(&a->desc->free_list, &b->free_elem);
         a->cnt++;
         if(a->cnt == a->desc->block_per_arena) {
             for(uint32_t i = 0; i < a->desc->block_per_arena; i++) {
                 b = arena2block(a, i);
+                //printk("%d. %x\n", i, b);
                 ASSERT(elem_find(&a->desc->free_list, &b->free_elem));
                 list_remove(&b->free_elem);
             }

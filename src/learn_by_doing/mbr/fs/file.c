@@ -272,85 +272,32 @@ int32_t file_write(struct file* file, const void* buf, uint32_t count) {
    return bytes_written;
 }
 
+uint32_t bmap(struct file* file, void* iobuf) {
+   uint32_t nr = file->fd_pos / BLOCK_SIZE;
+   if(nr < 12) return file->fd_inode->i_sectors[nr];
+   nr -= 12;
+   disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], iobuf, 1);
+   return ((uint32_t*)iobuf)[nr];
+}
+
 int32_t file_read(struct file* file, void* buf, uint32_t count) {
    // printk("--> file_read: ino: %d size: %d\n", file->fd_inode->i_no, count);
    uint8_t* io_buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
    ASSERT(io_buf != NULL);
-   struct arena* a = (struct arena*)((uint32_t)io_buf & 0xfffff000);
-   // printk("io_buf-> arena: 0x%x, cnt: %d l: %d bs: %d bs_cnt: %d\n", a, a->cnt, a->large, a->desc->block_size, a->desc->block_per_arena);
-   if(io_buf == NULL) {
-      printk("file_read: sys_malloc for io_buf failed\n");
-      goto file_read_error;
+   uint8_t * p = (uint8_t*)buf;
+
+   uint32_t left = count;
+   while(left) {
+      uint32_t nr = bmap(file, io_buf);
+      disk_read(cur_part->my_disk, nr, io_buf, 1);
+      uint32_t offset = file->fd_pos % BLOCK_SIZE;
+      uint32_t size = left > (BLOCK_SIZE - offset) ? (BLOCK_SIZE - offset) : left;
+      file->fd_pos += size;
+      left -= size;
+      uint8_t * io_buf_p = io_buf + offset;
+      while(size--) *p++ = *io_buf_p++;
    }
 
-   uint32_t size = count;
-
-   if(file->fd_pos > file->fd_inode->i_size) return -1;
-   if(file->fd_pos + count > file->fd_inode->i_size) {
-      size = file->fd_inode->i_size - file->fd_pos;
-   }
-
-   // printk(">>> file_read: io_buf: %x prev: %x, next: %x\n", io_buf, ((uint32_t*)io_buf)[128], ((uint32_t*)io_buf)[129]);
-   // printk("file_read: ino: %d, pos: %d, file_size:%d, size: %d\n", file->fd_inode->i_no, file->fd_pos, file->fd_inode->i_size, size);
-   if(size == 0) return 0;
-
-   uint32_t start_sec = file->fd_pos / BLOCK_SIZE;
-   uint32_t start_offset = file->fd_pos % BLOCK_SIZE;
-   uint32_t end_sec = (file->fd_pos + size) / BLOCK_SIZE;
-   uint32_t end_offset = (file->fd_pos + size) % BLOCK_SIZE;
-   uint32_t* all_blocks = (uint32_t*)sys_malloc(BLOCK_SIZE + 48);
-   a = (struct arena*)((uint32_t)all_blocks & 0xfffff000);
-   // printk("blocks-> arena: 0x%x, cnt: %d l: %d bs: %d bs_cnt: %d\n", a, a->cnt, a->large, a->desc->block_size, a->desc->block_per_arena);
-
-   if(all_blocks == NULL) {
-      printk("file_read: sys_malloc for all_blocks failed\n");
-      goto file_read_error;
-   }
-   int32_t block_lba = -1;
-
-   for(int i = 0; i < 12; i++) {
-      all_blocks[i] = file->fd_inode->i_sectors[i];
-   }
-
-   if(end_sec > 12) {
-      block_lba = file->fd_inode->i_sectors[12];
-      if(block_lba == 0) {
-         memset(all_blocks + 12, 0, BLOCK_SIZE);
-      } else 
-         disk_read(cur_part->my_disk, file->fd_inode->i_sectors[12], all_blocks + 12, 1);
-   }
-
-   int32_t bytes_read = 0;
-   if(start_sec == end_sec) {
-      // printk("file_read: %d -> %d\n", start_sec, all_blocks[start_sec]);
-      disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
-      memcpy(buf, io_buf+start_offset, size);
-      bytes_read = size;
-   } else {
-      // 跨扇区的情况
-      // 先处理第一个扇区
-      disk_read(cur_part->my_disk, all_blocks[start_sec], io_buf, 1);
-      memcpy(buf, io_buf + start_offset, BLOCK_SIZE - start_offset);
-      bytes_read = BLOCK_SIZE - start_offset;
-
-      for(uint32_t idx = start_sec + 1; idx < end_sec; idx++) {
-         disk_read(cur_part->my_disk, all_blocks[idx], io_buf, 1);
-         memcpy(buf + bytes_read, io_buf, BLOCK_SIZE);
-         bytes_read += BLOCK_SIZE;
-      }
-      // 先处理最后一个扇区
-      disk_read(cur_part->my_disk, all_blocks[end_sec], io_buf, 1);
-      memcpy(buf + bytes_read, io_buf, end_offset);
-      bytes_read += end_offset;
-   }
-
-   sys_free(all_blocks);
    sys_free(io_buf);
-   file->fd_pos = file->fd_pos + bytes_read;
-   return bytes_read;
-
-file_read_error:
-   if(all_blocks != NULL) sys_free(all_blocks);
-   if(io_buf != NULL) sys_free(io_buf);
-   return -1;
+   return count;
 }

@@ -46,7 +46,7 @@ enum segment_type {
 
 static bool segment_load(int32_t fd, uint32_t offset, uint32_t filesz, uint32_t vaddr) {
     uint32_t page_cnt = DIV_ROUND_UP((vaddr & 0x00000fff) + filesz, PAGE_SIZE);
-    //printk("start segment_load for %x, cnt: %d\n", vaddr, page_cnt);
+    printk("segment_load: for %x, cnt: %d\n", vaddr, page_cnt);
     uint32_t vaddr_page = vaddr & 0xfffff000;
     for(uint32_t page_idx = 0; page_idx < page_cnt; page_idx++) {
         uint32_t *pde = pde_ptr(vaddr_page);
@@ -85,15 +85,15 @@ int32_t load(const char* path) {
 
     for(uint32_t prog_idx=0; prog_idx < elf_header.e_phnum; 
         prog_idx++, prog_header_offset += elf_header.e_phentsize) {
-        // printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
-        // printk("load: seek to %d\n", prog_header_offset);
+        printk("load %d of %d segment..\n", prog_idx, elf_header.e_phnum);
+        printk("load: seek to %d\n", prog_header_offset);
         sys_lseek(fd, prog_header_offset, SEEK_SET);
-        // printk("load: read prog header size: %d\n", prog_header_size);
+        printk("load: read prog header size: %d\n", prog_header_size);
         if(sys_read(fd, &prog_header, prog_header_size) != prog_header_size) {
-            // printk("load: err: read size not equal to prog_header_size\n");
+            printk("load: err: read size not equal to prog_header_size\n");
             goto load_done;
         }
-        // printk("load: check prog type\n");
+        printk("load: check prog type\n");
         if(PT_LOAD == prog_header.p_type) {
             // printk("load elf: %s vaddr:%x offset:%x size: %x\n", path, prog_header.p_vaddr, prog_header.p_offset, prog_header.p_filesz);
             if(!segment_load(fd, prog_header.p_offset, prog_header.p_filesz, prog_header.p_vaddr)) {
